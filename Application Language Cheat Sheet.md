@@ -2,7 +2,7 @@
 [Official Documentation](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-dev-overview)
 
 ## Declaring Variables
-```al-language
+```al
 // Global variables
 Var
     MyInteger: Integer;
@@ -208,7 +208,7 @@ Order of operations can be manipulated with the use of subexpressions `()`
 ``` al
 // You can only declare one statement this way
 If var1 (condition) var2 then
-    logic;
+    statement;
 
 var 
     a: Integer;
@@ -275,6 +275,7 @@ begin
 end;
 ```
 
+---
 **"downto" for loop**
 ``` al
 var
@@ -288,6 +289,7 @@ begin
 end;
 ```
 
+---
 **Foreach loop**
 ``` al
 var
@@ -299,7 +301,46 @@ begin
 end;
 ```
 
+---
 **While loop**
 ``` al
+var
+    count: Integer;
+begin
+    count := 0;
 
+    while count < 8 do begin
+        count := count + 1;
+        statement2;
+    end;
+end;
 ```
+
+---
+**"Repeat until" or "do while" Loop**
+- This loop runs while the condition is *not* valid, and will always run *at least once*
+- Additionally this loop does not require a "begin" and "end" to contain multipule statements
+``` al
+var
+    count: Integer;
+begin
+    count := 0;
+    
+    repeat
+        statement1;
+        statement2;
+    until count >= 8;
+end;
+
+// to iterate over an object (like a table)
+var
+    myTable: Record MyTable;
+begin
+    myTable.FindSet();
+    repeat
+        myTable.Amount := 100;
+    until myTable.Next() = 0;
+end;
+```
+
+---
