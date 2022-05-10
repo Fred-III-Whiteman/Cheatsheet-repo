@@ -318,8 +318,8 @@ end;
 
 ---
 **"Repeat until" or "do while" Loop**
-- This loop runs while the condition is *not* valid, and will always run *at least once*
-- Additionally this loop does not require a "begin" and "end" to contain multipule statements
+- This loop runs while the condition is *not* valid, and will always run *at least once*.
+- Additionally this loop does not require a `begin` and `end` to contain multipule statements.
 ``` al
 var
     count: Integer;
@@ -344,3 +344,429 @@ end;
 ```
 
 ---
+## Built in Functions
+### "Interactive" functions
+**Message**
+
+Creates a popup with the message displayed.
+``` al
+Message('Hello World');
+Message(string [,Value1, ...]);
+Message('This is a string with %1 placeholder', 'one')
+```
+
+---
+**Confirm**
+
+Creates a popup with a "yes" and "no" option for the user.
+``` al
+myConfirm := Dialog.Confirm(messageString [,defaultButton] [,valueForPlaceholder, ...]);
+
+// Confirm can be evaluated in an if statement. "false" is to set the default button to "No" 
+If Confirm('messageString', false) then
+    Message('Pressed Yes');
+else
+    Message('Pressed No');
+```
+
+---
+**StrMenu**
+
+Prompts the user for information or to select from a series of choices.
+``` al
+OptionNumber := StrMenu(OptionString [,DefaultNumber] [,Instruction]);
+
+var
+   Days: Text[50];
+   Selection: Integer;
+begin
+   Days := 'Monday,Tuesday,Wednesday,Thursday,Friday';
+   Selection := StrMenu(Days, 1, 'Which day is today?');
+   Message('You selected %1.', Selection);
+end;
+```
+
+---
+**Error message**
+
+After an error message is produced the code will stop running.
+``` al
+Error(String [,Value1, ...]);
+
+Error('This is an error message');
+Message('This message will never run');
+```
+
+---
+### String functions
+
+All of the [.NET sting methods](https://docs.microsoft.com/en-us/dotnet/api/system.string?view=net-6.0#methods) are supported.
+
+**StrPos and indexOf**
+
+These can be used to find the location of a substring within a string. Returns an integer position.
+``` al
+stringPos := StrPos(string, subString);
+
+Message(%1, StrPos('Hello World!', 'l')); // returns 3
+
+// Alternatively use IndexOf
+Position := String.IndexOf(Substring,[StartPosition]);
+
+myString := 'Hello World!";
+Message(%1, myString.IndexOf('w')); // returns 7
+```
+
+---
+**CopyStr and Substring**
+
+These can be used to return a section of a string.
+``` al
+NewString := CopyStr(String, StartIndex, [Length]); // length is optional
+
+myString := 'Hello World!';
+Message(%1, CopyStr(myString, 7)); // returns 'World!'
+
+// Alternativy use Substring()
+
+myString := 'Hello World!';
+Message(%1, myString.Substring(7,5)); // returns 'World'
+```
+
+Caution should be used with `Substring` as it will error if the "length" value is larger then the number of characters left in the string, while `CopyStr` will not.
+
+---
+**SelectStr and Split**
+
+`SelectStr` can be used to get a substring from a comma seperated *string*.
+``` al
+myString := 'This,is,a,comma seperated,string';
+Message(%1, SelectStr(4, myString)); // returns 'comma seperated'
+```
+
+Split can be used to split up a string at a certain character. Split returns a list of text.
+``` al
+myString := 'This,is,a,comma seperated,string';
+Message(%1, myString.Split(',', ' ').get(2)); // returns 'is'
+```
+
+---
+**InStr**
+
+`InStr` will insert a string into an existing string at a specified index.
+``` al
+myString := 'This is string';
+Message(%1, InStr(myString, 'a ', 8)); // returns 'This is a string'
+```
+
+---
+**StrLen and MaxStrLen**
+`StrLen` will return the length of a sting and MaxStrLen will retrun the maximun length a variable can hold.
+``` al
+var
+    myString: Text[30];
+begin
+    myString := 'Hello World!';
+    Message(myString has %1 characters, StrLen(myString)); // returns 'myString has 12 characters'
+    Message(myString can hold %1 characters, MaxStrLen(myString)); // returns 'myString can hold 30 characters'
+end;
+```
+
+---
+**Character case functions**
+
+To change to case of a string use `LowerCase` and `UpperCase` or the .NET methods `ToLower` and `ToUpper`
+
+``` al
+myString := 'all lowercase';
+myStringV2 := 'ALL UPPERCASE';
+
+Message(%1, UpperCase(myString)); // or
+Message(%1, myString.ToUpper()); // return 'ALL LOWERCASE'
+
+Message(%1, LowerCase(myStringV2)); // or
+Message(%1, myStringV2.ToLower()); // returns 'all uppercase'
+```
+
+---
+**IncStr**
+
+Used to increment (if positive) or decrement (if negative) a number in a string. If there is more than one number in a string it will only increment the last one.
+``` al
+myString := 'I am 20 years old';
+Message(IncStr(myString)); // returns 'I am 21 years old'
+
+myString := 'It is -30 out today';
+Message(IncStr(myString)); // returns 'It is -31 out today'
+```
+
+---
+### Date Functions
+- `Today` and `Time` will return the current date and time.
+- `WorkDate` will return the work date set in BC
+
+**Date2DMY** (Date to day, month, or year)
+``` al
+// 1 - day, 2 - month, 3 - year
+Date2DMY(Date, [1,2,3]);
+
+todaysDate := Today(); // returns 05/10/2022 (MM/DD/YYYY)
+
+Message(%1, Date2DMY(todaysDate, 1)); // returns 10
+Message(%1, Date2DMY(todaysDate, 2)); // returns 5
+Message(%1, Date2DMY(todaysDate, 3)); // returns 2022
+```
+
+---
+**Date2DWY** (Date to day, weak, or year)
+``` al
+// 1 - day (1-7), 2 - week (1-53), 3 - year
+Date2DMY(Date, [1,2,3]);
+
+todaysDate := Today(); // returns 05/10/2022 (MM/DD/YYYY)
+
+Message(%1, Date2DMY(todaysDate, 1)); // returns 2
+Message(%1, Date2DMY(todaysDate, 2)); // returns 18
+Message(%1, Date2DMY(todaysDate, 3)); // returns 2022
+```
+----
+**CalcDate**
+
+Used to calculate a new date from a given date or from the system date
+``` al
+// x - number of units to calculate, can be negative
+// D - days, W - Weeks, M - Months, Q - Quarters, Y - Years
+// date is optional, default is sysDate
+CalcDate([xD, xW, xM, xQ, xY], (date));
+
+myDate := 05/01/2022 (MM/DD/YYYY)
+Message(%1, CalcDate('1W', myDate)); // returns 05/08/2022
+
+Message(%1, CalcDate(-1Y)); // Returns the year from your systems date - 1
+```
+
+---
+### Numeric Functions
+**Round**
+``` al
+// Precision and direction are optional
+// Precision: Number of decimal points to round too
+// Direction: = - closest whole number, < - Up, > - Down
+Round(number, (Precision), (Direction [=, <, >]));
+
+myNumber := 1.34;
+Message('%1', Round(myNumber)); // returns 1
+Message('%1', Round(myNumber, 0, <)); // returns 2
+Message('%1', Round(myNumber, 1, >)): // returns 1.3
+```
+
+---
+**Abs and Power**
+
+`Abs` will return a positive number or 0
+``` al
+Message(\'%1\', Abs(-10.45)); // returns 10.45
+
+------------------------------------------------
+System.Power(base: decimal, exponent: decimal);
+
+var
+    base: Decimal;
+    exponent: Decimal;
+    MyMessage: Label '%1 raised to the power of %2 = %3';
+begin
+    Number1 := 3;   
+    Power1 := 2;
+    Message(myMessage, base, exponent, Power(base, exponent)); // returns '3 raised to the power of 2 = 9'
+end;
+```
+
+---
+**Random and Randomize**
+
+`Random(max)` will create a new random number between one and the specified max number. The max number will treat negative values as positive and if 0 is entered it will always return 1.
+
+`Randomize(seed)` will ensure that `Random` will generate unique numbers when run in a loop. Seed is optional and defaults to the system clock.
+
+---
+### Array Functions
+**ArrayLen**
+
+`ArrayLen` will only count the number of used indices in the specified array.
+``` al
+// Dimension is optional and specifies the dimension in a multi-dimensional array to count.
+ArrayLen(myArray, (dimension));
+
+myArray: array[10] of Integer;
+Message(%1, ArrayLen(myArray)); // returns 0
+
+myArray[1] := 1;
+myArray[2] := 2;
+myArray[1] := 10;
+
+Message(%1, ArrayLen(myArray)); // returns 2
+```
+
+---
+**CompressArray**
+
+Moves all empty strings to the end of the array.
+``` al
+myArray[1] := 'Chocolate';
+myArray[2] := '';
+myArray[3] := 'Vanilla';
+
+CompressArray(myArray);
+
+/* returns: 
+   myArray[1] = 'Chocolate';
+   myArray[2] - 'Vanilla';
+   myArray[3] = '';
+*/
+```
+
+---
+**CopyArray**
+
+`CopyArray` will copy an existing array from a index position and with an optional new length. If length is left blank it will copy all of the non-empty values starting from the specified position.
+``` al
+CopyArray(newArray, specifiedArray, position, (length));
+```
+
+---
+### List Functions
+**Add**
+``` al
+myIntList.Add(5); // adds 5 to the end of the list
+myStrList.Add('orange'); // adds 'orange' to the end of the list
+```
+
+---
+**Contains**
+
+Checks if a value is contained in a list
+``` al
+myList := (1, 3, 4, 5);
+Message(%1, myList.Contains(2)); // returns false
+Message(%1, myList.Contains(4)); // returns true
+```
+
+---
+**Get**
+
+retrives and item from a list at a specified index.
+``` al
+myList := (1, 2, 3, 6, 7);
+Message(%1, myList.Get(4)); // returns 6
+```
+
+---
+**Set**
+
+Sets the value of an index to the specified value
+``` al
+myList := ('red', 'blue', 'cyan', 'purple');
+myList.Set(4, 'orange'); 
+// results in ('red', 'blue', 'cyan', 'orange')
+```
+
+---
+**Insert**
+
+Inserts a new value into a list at a specified index
+``` al
+myList := (1, 2, 4, 5);
+myList.Insert(3, 3);
+// results in (1, 2, 3, 4, 5)
+```
+
+---
+**Remove**
+
+Removes the first occurrance of a value and returns a boolean
+``` al
+myList := ('Chocolate', 'Vanilla', 'Strawberry', 'Orange', 'Strawberry');
+myList.remove('Strawberry'); // returns true
+// results in ('Chocolate', 'Vanilla', 'Orange', 'Strawberry')
+```
+
+---
+**RemoveAt**
+
+Removes a value at a specified index and returns a boolean.
+``` al
+myList := ('red', 'orange', 'pink', 'blue');
+myList.RemoveAt(2); // returns true
+// results in ('red', 'pink', 'blue')
+```
+
+---
+**Count**
+
+Counts the number of items in a list.
+``` al
+myList := (1, 4, 2, 6, 8);
+Message(%1, myList.Count()); // returns 5
+```
+
+---
+**AddRange**
+
+`AddRange` is the correct way to add several items to a list.
+``` al
+// not correct
+myList := (1, 2, 3);
+
+// Correct
+myList.AddRange(1, 2, 3);
+```
+
+---
+**GetRange**
+
+Retrieves a list from an existing list, starting from a specified index and taking a specified count.
+``` al
+myList := (1, 2, 5, 6, 2);
+myList.getRange(2, 3); // returns 2, 5, 6
+```
+
+---
+**RemoveRange**
+
+Removes several items from a list starting from a specified index and for a specified count.
+``` al
+myList := ('orange', 'purple', 'green', 'yellow');
+myList.RemoveRange(2,2);
+// results in ('orange', 'yellow')
+```
+
+---
+**IndexOF**
+
+Returns the index of the first occurrance of a specified item.
+``` al
+myList = (1, 6, 9, 3, 2, 9);
+Message(%1, myList.IndexOf(9)); // returns 3
+```
+
+---
+**LastIndexOf**
+
+Returns the index of the last occurrance of a specified item.
+``` al
+myList = (1, 6, 9, 3, 2, 9);
+Message(%1, myList.IndexOf(9)); // returns 6
+```
+
+---
+**Reverse**
+
+Reversed the order of a list
+``` al
+myList := (1, 2, 3, 4, 5);
+myList.Reverse();
+// results is (5, 4, 3, 2, 1)
+```
+
+---
+### System Functions
