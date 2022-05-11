@@ -8,16 +8,22 @@
 4. [XML Docs and Comments](#xml-documentation-comments)
 5. [Conditional Statements](#conditional-statements)
 6. [Loops](#loops)
-7. [Built in Functions](#built-in-functions)
-8. [String Functions](#string-functions)
-9. [Date Functions](#date-functions)
-10. [Numeric Functions](#numeric-functions)
-11. [Array Functions](#array-functions)
-12. [List Functions](#list-functions)
-13. [System Functions](#system-functions)
-14. [Functions or Procedures](#functions-or-procedures)
-15. [Code Units](#code-units)
-16. [Triggers](#triggers)
+7. Built in Functions
+    - ["Interactive" Functions](#"interactive"-functions)
+    - [String Functions](#string-functions)
+    - [Date Functions](#date-functions)
+    - [Numeric Functions](#numeric-functions)
+    - [Array Functions](#array-functions)
+    - [List Functions](#list-functions)
+    - [System Functions](#system-functions)
+    - [Field Functions](#field-functions)
+    - [Variable Functions](#variable-functions)
+    - [Data Access Functions](#data-access-functions)
+    - [Modifying Data](#modifying-data)
+8. [Custom Functions or Procedures](#custom-functions-or-procedures)
+9. [Code Units](#code-units)
+10. [Triggers](#triggers)
+11. [Interfaces](#interfaces)
 
 ## Declaring Variables
 [back to the top](#application-language-cheat-sheet)
@@ -76,7 +82,7 @@ enum 50100 MyEnum
 
 **Fundamental data types**
 <details>
-    <Summary>
+    <summary>
         Click to view
     </summary>
 
@@ -375,8 +381,9 @@ end;
 
 ---
 ## Built in Functions
-[back to the top](#application-language-cheat-sheet)
 ### "Interactive" functions
+[back to the top](#application-language-cheat-sheet)
+
 **Message**
 
 Creates a popup with the message displayed.
@@ -817,6 +824,46 @@ myList.Reverse();
 You can use `UserId();` and `CompanyName();` to return the user id and company name of whoever is logged in and running code.
 
 ---
+### Field Functions
+[back to the top](#application-language-cheat-sheet)
+
+**CalcFields and SetAutoCalcFields**
+These are used to run calculations on specified fields. `myRecord.CalcFields(attribute);` only runs one calculation per call while, `myRecord.SetAutoCalcFields(attribute);` will always run the calculations while in the funcion scope.
+
+---
+**CalcSums**
+This is used to calculate a total for a specified attribute based on the filters in the dataset.
+
+---
+**FieldError**
+This is used to throw an error for a specified field if it does not meet the specified criteria.
+``` al
+if myRecord.field > 100 & < 0 then
+    myRecord.FieldError(field, 'Must be between 0 and 100');
+```
+---
+**Init**
+This is used to instantiate a new record of a specified type with all of it attributes being set to the default value, unless an `InitValue` is specified on the table, in which case the attribute will be set to that value.
+
+---
+**TestField**
+
+This is used to check weather a field has a value or has been left blank. If it is empty it will throw a run-time error.
+``` al
+myRecord.TestField(field, [value]);
+```
+The value is optional and can be used to check if the field has a specified value.
+
+---
+**Validate**
+
+This is used to run the `OnValidate` trigger on a specified field.
+``` al
+myRecord.Validate(field, [value]);
+```
+The optional value can be used to assign that value then run the `OnValidate` trigger.
+
+---
 ### Variable Functions
 [back to the top](#application-language-cheat-sheet)
 
@@ -842,7 +889,179 @@ myString := Format(myInt);
 ```
 
 ---
-## Functions or Procedures
+### Data Access Functions
+[back to the top](#application-language-cheat-sheet)
+
+**Get**
+
+The `Get` function retrives a record via the Primary Key. If the PK is a combination key you need to specify all keys.
+``` al
+var
+    myRecord: Record databaseRecord;
+begin
+    // It is advisable to use an if statement like a "try/Catch"
+    If myRecord.get('PrimaryKey') then
+        Message('Record Found!');
+    else
+        Error('Record Not Found D:');
+end;
+```
+---
+**Find**
+
+There are two "Find" functions: `FindFirst` and `FindLast`, which call an SQL query for `SELECT TOP 1`.
+
+Some code still uses the deprecated functions `Find('-')` and `Find('+')`, These have bad performance and should be avoided.
+
+``` al
+var
+    myRecord: Record databaseRecord;
+begin
+    myRecord.FindFirst(); // Queries SQL for the first record via SELECT TOP 1 * FROM myRecord
+
+    myRecord.FindLast(); // Queries SQL for the last record via SELECT TOP 1 * FROM myRecord ORDER BY No. DESC
+end;
+```
+To retrive all records use `FindSet();`
+``` al
+var
+    myRecord: Record databaseRecord;
+begin
+    myRecord.FindSet(); // Queries SQL for all records via SELECT * FROM myRecord
+end;
+```
+
+---
+
+**Next**
+
+To get the next record from a serires of records use the `Next();` function
+``` al
+var
+    myRecord: Record databaseRecord;
+begin
+    myRecord.FindSet();
+
+    repeat
+        Message(myRecord.attribute);
+    until myRecord.Next() = 0;
+end;
+```
+---
+**IsEmpty**
+
+`IsEmpty();` is used to check if a record exists.
+
+---
+### Sorting Functions
+[back to the top](#application-language-cheat-sheet)
+
+**SetCurrentKey**
+
+To change the attribute that the find functions will sort by call the `SetCurrentKey` function
+``` al
+var
+    myRecord: Record databaseRecord'
+begin
+    myRecord.SetCurrentKey(attribute);
+
+    myRecord.FindFirst(); // this is now sorted by the specified attribute
+end;
+```
+---
+**SetRange and SetFilter**
+
+To filter the results by a range use `SetRange`, which takes three arguments:
+``` al
+SetRange(Attribute, [FromValue], [ToValue]);
+```
+`FromValue` and `ToValue` are both optional and if you leave both out you will remove that filter from the query. If you only leave `ToValue` out, it will search for all records that equal the `FromValue`.
+
+In order to search for records that have values larger or smaller then a specified value, you should use `SetFilter`.
+
+`SetFilter` accepts all relational expressions (comparison operators) as well as `&` (and) and `|` (or).
+``` al
+SetFilter(attribute, String, [value1], [value2]);
+```
+`value1` and `value2` represent valuse for placeholders, the actual filter goes into the string.
+``` al
+myRecord.SetFilter("No.", '> 10 & < 100');
+// or
+myRecord.SetFilter("No.", '> %1 & < %2', myVar1, myVar2);
+```
+Now would be a good time to consider using `IsEmpty();`
+``` al
+var
+    myRecord: Record databaseRecord;
+begin
+    myRecord.SetFilter(attribute1, '*@banana* | *@apple*'); // searching for any record with the words "banana" or "apple" in the specified attribute
+
+    if (myRecord.IsEmpty()) then
+        Message('No Records Found.');
+    else
+        Message('%1 records found.', myRecords.Count());
+end;
+```
+---
+### Modifying Data
+**Insert**
+
+Before inserting data you must set values for each attribute for that entity.
+``` al
+var
+    myRecord : Record databaseRecord;
+begin
+    myRecord.Init(); // Create a new empty record
+    // Set values
+    myRecord.attribute1 := value1;
+    myRecord.attribute2 := value2;
+    // etc..
+    myRecord.Insert(true); // true denotes if the "OnInsert" trigger should run
+end;
+```
+---
+**Modify and ModifyAll**
+``` al
+var
+    myRecord: Record databaseRecord;
+begin
+    myRecord.Get(primaryKey); // get the record to update
+    // update the values
+    myRecord.attribute2 := value1;
+    myRecord.attribute5 := value2;
+    // etc...
+    myRecord.Modify(true); // true decides if the "OnModify" trigger should run
+end;
+```
+`ModifyAll` will update a specified collection of records
+``` al
+var
+`myRecord: Record databaseRecord;
+begin
+    myRecord.SetRange("No.", 500, 550); // get the records to update
+    // update the values
+    myRecord.ModifyAll(attribute, newValue, true); // true decides if the "OnModify" trigger should run
+end;
+```
+---
+**Delete and DeleteAll**
+``` al
+var
+`myRecord: Record databaseRecord;
+begin
+    myRecord.Get(primaryKey); // get the record to delete
+    myRecord.Delete(true); // true decides if the "OnDelete" trigger should run
+
+    // or
+
+    myRecord.SetRange("No.", 500, 550); // get the records to delete
+    myRecord.DeleteAll(true); // true decides if the "OnDelete" trigger should run
+end;
+```
+**NOTE:** Both `Delete` and `DeleteAll` do not ask for confirmation and will remove the records without notice.
+
+---
+## Custom Functions or Procedures
 [back to the top](#application-language-cheat-sheet)
 
 ``` al
@@ -859,7 +1078,7 @@ end;
 // internal - can only be accessed from within the same extension
 // protected - can only be accessed from within the defining and host object
 
-[local, internal, protected] procedure myFunction(param1: dataType, param2: dataType) : returnType
+[local, internal, protected] procedure myFunction(param1: dataType; param2: dataType) : returnType
 var
     myLocalVar: dataType;
 begin
@@ -1021,3 +1240,12 @@ The fourth paramater is for subscribing to `OnBeforeValidate` or `OnAfterValidat
 `SkipOnMissingLicense` and `SkipOnMissingPermissions` define wheather the event should be skipped if you don't have the correct license or permission (true - skip, false - will throw an error). If these are set to false and they throw an error, all other subscribers will stop or be rolled back.
 
 ---
+## Interfaces
+[back to the top](#application-language-cheat-sheet)
+
+[Interfaces](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-interfaces-in-al)
+
+![Interface1](https://docs.microsoft.com/en-us/learn/modules/business-central-interfaces/media/interface-example.png)
+
+an example of using interfaces to provide both backwards compatability and new versions.
+![interface2](https://docs.microsoft.com/en-us/learn/modules/business-central-interfaces/media/interface-example-2.png)
