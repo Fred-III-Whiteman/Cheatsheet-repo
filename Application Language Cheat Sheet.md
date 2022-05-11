@@ -15,6 +15,9 @@
 11. [Array Functions](#array-functions)
 12. [List Functions](#list-functions)
 13. [System Functions](#system-functions)
+14. [Functions or Procedures](#functions-or-procedures)
+15. [Code Units](#code-units)
+16. [Triggers](#triggers)
 
 ## Declaring Variables
 [back to the top](#application-language-cheat-sheet)
@@ -66,8 +69,10 @@ enum 50100 MyEnum
     }
 }
 ```
-## [Data Types](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/library)
+## Data Types
 [back to the top](#application-language-cheat-sheet)
+
+[All Data Types](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/library)
 
 **Fundamental data types**
 <details>
@@ -831,9 +836,188 @@ boolean := Evaluate(variable, varToConvert);
 ---
 **Format**
 
-`Format` can also be used to convert variables.
+`Format` can also be used to convert variables to the text data type.
 ``` al
 myString := Format(myInt);
 ```
+
+---
+## Functions or Procedures
+[back to the top](#application-language-cheat-sheet)
+
+``` al
+trigger myTrigger()
+begin
+    myFunction();
+    // or
+    myVar = myFunction();
+    // or
+    myVar = myVar2 * myFunction();
+end;
+
+// local - can only be accessed from within the same object
+// internal - can only be accessed from within the same extension
+// protected - can only be accessed from within the defining and host object
+
+[local, internal, protected] procedure myFunction(param1: dataType, param2: dataType) : returnType
+var
+    myLocalVar: dataType;
+begin
+    // code goes here
+    Exit(toBeReturned); // same as return in 90% of other languages
+end;
+```
+
+By default paramaters are passed by value, meaning that the value of the variable does not change when the value of the paramater is changed.
+
+To pass a variable by reference, which *will* change its value when the value of the paramater is changed, add `var` in-front of the paramater.
+``` al
+trigger myTrigger()
+begin
+    myProcedure(myVar);
+end;
+
+procedure myProcedure(var param1: integer)
+begin
+    param1 := 20; // this will change the value of myVar
+end;
+```
+---
+## Code Units
+[back to the top](#application-language-cheat-sheet)
+### Subtypes
+> "Normal - The default value for every new codeunit. This subtype is a regular codeunit. It has only one trigger: OnRun".
+
+> "Install - This type of codeunit will only be run during the installation of the extension package. This subtype provides access to two extra triggers".
+
+> "Upgrade - This type of codeunit will only be run during the upgrade process of an extension package. This subtype gives access to five extra triggers".
+
+> "Test - This subtype enables you to write unit test functions. You don't create normal functions in this codeunit because it can only run during unit testing".
+
+> "TestRunner - This subtype will run one or more Test codeunits".
+---
+### Syntax
+``` al
+codeunit id(50100) name(myCodeunit)
+{
+    Access = Public;
+    Subtype = Normal;
+
+    trigger OnRun()
+    begin
+
+    end;
+
+    procedure myProcedure()
+    begin
+
+    end;
+}
+```
+---
+
+### Accessing Code units
+using `RunObject`
+``` al
+actions
+{
+    area(Processing)
+    {
+        action(actionName)
+        {
+            ApplicationArea = All;
+            Image = NewSum;
+
+            RunObject = codeUnit MyCodeUnit; // This will only use the OnRun trigger
+        }
+    }
+}
+```
+
+Accessing other function inside your code unit
+``` al
+actions
+{
+    area(processing)
+    {
+        action(actionName)
+        {
+            ApplicationArea = All;
+            Image = NewSum;
+
+            trigger OnAction()
+            var
+                myCodeunitReference: Codeunit myCodeunit;
+            begin
+                myCodeunitReference.myFunction();
+            end;
+        }
+    }
+}
+```
+---
+## Triggers
+[back to the top](#application-language-cheat-sheet)
+
+[All Triggers](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-event-types#trigger-events)
+
+### Table Triggers
+- `OnInsert` will run just before a new record is inserted into a table.
+- `OnModify` will run just before a record is modified or updated.
+- `OnDelete` will run just before a record is removed from a table.
+- `OnRename` will run just before a record is renamed.
+
+### Field Triggers
+- `OnValidate` will run after a user clicks away from a modified field.
+- `OnLookup` will run when after a different table is queried.
+- `OnAssistEdit` will run when a user uses the "Assist Edit" button.
+- `OnDrillDown` will run when a user opens a "drill-down" field.
+
+### Page Triggers
+ - `OnInit` will run when the page is loaded, but before the user has access.
+ - `OnOpenPage` will run after the page is initialized and the user has access.
+ - `OnAfterGetRecord` will run after a record is retrived, but before it is displayed.
+ - `OnAfterGetCurrRecord` will run after the current record has been retrived from the table.
+ - `OnAction` will run when a user selects a button. This trigger has the potential to conflict with `RunObject`, so it is advisable to use only one. If more logic is needed then is available with `RunObject` then `OnAction` should be used.
+
+ ---
+ ## Custom Events
+ [back to the top](#application-language-cheat-sheet)
+
+You can write your own custom events that will allow future integrations to be made without modifying original code.
+
+There are two levels of custom events:
+- "Bussiness Events" - Which are made by Microsoft and other ISVs. These come with the guaranty that their signature will never change.
+- "Integration Events" - These can be made by anyone and do not come with the same guarantee as Bussiness events.
+
+There are three parts to custom events:
+- the **event**
+- a **Publisher**
+    - This is where the event is declared and where people can subscribe.
+- a **Subscriber**
+    - This listens for the event and runs the custom logic (ie a trigger).
+
+**Declaring an Integration Event**
+
+To decclare an Integration event simply add the following annotation to an empty procedure:
+``` al
+[IntegrationEvent(IncludeSender, false)]
+```
+`IncludeSender` will allow subscribers to access the publishing object so that they can access other function in the same instance.
+
+The second paramater `GlobalVarAccess` is deprecated and should *always* be set to false.
+
+**Subscribing to an event**
+
+To subscribe to an event add the following annotation to a procedure:
+``` al
+[EventSubscriber(ObjectType::Codeunit, Codeunit::codeunitName, 'eventName', '', SkipOnMissingLicense, SkipOnMissingPermission)]
+```
+
+In order to subscribe to an event you must tell it where the event publisher is located and its name, which are the first three paramaters.
+
+The fourth paramater is for subscribing to `OnBeforeValidate` or `OnAfterValidate`, and you need to define the field to use the validation event on.
+
+`SkipOnMissingLicense` and `SkipOnMissingPermissions` define wheather the event should be skipped if you don't have the correct license or permission (true - skip, false - will throw an error). If these are set to false and they throw an error, all other subscribers will stop or be rolled back.
 
 ---
