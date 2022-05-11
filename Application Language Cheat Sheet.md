@@ -1,7 +1,23 @@
 # Application Language Cheat Sheet
 [Official Documentation](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-dev-overview)
 
+## Table of Contents
+1. [Declaring Variables](#declaring-variables)
+2. [Data Types](#data-types)
+3. [Operators](#operators)
+4. [XML Docs and Comments](#xml-documentation-comments)
+5. [Conditional Statements](#conditional-statements)
+6. [Loops](#loops)
+7. [Built in Functions](#built-in-functions)
+8. [String Functions](#string-functions)
+9. [Date Functions](#date-functions)
+10. [Numeric Functions](#numeric-functions)
+11. [Array Functions](#array-functions)
+12. [List Functions](#list-functions)
+13. [System Functions](#system-functions)
+
 ## Declaring Variables
+[back to the top](#application-language-cheat-sheet)
 ```al
 // Global variables
 Var
@@ -50,7 +66,9 @@ enum 50100 MyEnum
     }
 }
 ```
-### [All Data Types](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/library)
+## [Data Types](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/library)
+[back to the top](#application-language-cheat-sheet)
+
 **Fundamental data types**
 <details>
     <Summary>
@@ -119,6 +137,8 @@ enum 50100 MyEnum
 
 ---
 ## Operators
+[back to the top](#application-language-cheat-sheet)
+
 **Unary Operators**
 > "A unary operator only impacts the term that directly follows the operator."
 
@@ -178,6 +198,7 @@ Order of operations can be manipulated with the use of subexpressions `()`
 
 ---
 ## [XML Documentation](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-xml-comments#supported-xml-tags) Comments
+[back to the top](#application-language-cheat-sheet)
 ``` al
 /// <summary>
 ///     A summary of the object
@@ -204,6 +225,8 @@ Order of operations can be manipulated with the use of subexpressions `()`
 
 ---
 ## Conditional Statements
+[back to the top](#application-language-cheat-sheet)
+
 **The If Statement**
 ``` al
 // You can only declare one statement this way
@@ -264,6 +287,8 @@ end;
 
 ---
 ## Loops
+[back to the top](#application-language-cheat-sheet)
+
 **The For Loop**
 ``` al
 // regular for loop
@@ -345,6 +370,7 @@ end;
 
 ---
 ## Built in Functions
+[back to the top](#application-language-cheat-sheet)
 ### "Interactive" functions
 **Message**
 
@@ -399,6 +425,7 @@ Message('This message will never run');
 
 ---
 ### String functions
+[back to the top](#application-language-cheat-sheet)
 
 All of the [.NET sting methods](https://docs.microsoft.com/en-us/dotnet/api/system.string?view=net-6.0#methods) are supported.
 
@@ -502,8 +529,10 @@ Message(IncStr(myString)); // returns 'It is -31 out today'
 
 ---
 ### Date Functions
-- `Today` and `Time` will return the current date and time.
-- `WorkDate` will return the work date set in BC
+[back to the top](#application-language-cheat-sheet)
+
+- `Today` will return the current date and `Time` will return the current time from the system.
+- `WorkDate` will return the work date set in BC.
 
 **Date2DMY** (Date to day, month, or year)
 ``` al
@@ -547,6 +576,8 @@ Message(%1, CalcDate(-1Y)); // Returns the year from your systems date - 1
 
 ---
 ### Numeric Functions
+[back to the top](#application-language-cheat-sheet)
+
 **Round**
 ``` al
 // Precision and direction are optional
@@ -590,6 +621,8 @@ end;
 
 ---
 ### Array Functions
+[back to the top](#application-language-cheat-sheet)
+
 **ArrayLen**
 
 `ArrayLen` will only count the number of used indices in the specified array.
@@ -635,6 +668,8 @@ CopyArray(newArray, specifiedArray, position, (length));
 
 ---
 ### List Functions
+[back to the top](#application-language-cheat-sheet)
+
 **Add**
 ``` al
 myIntList.Add(5); // adds 5 to the end of the list
@@ -770,3 +805,35 @@ myList.Reverse();
 
 ---
 ### System Functions
+[back to the top](#application-language-cheat-sheet)
+
+**UserID and CompanyName**
+
+You can use `UserId();` and `CompanyName();` to return the user id and company name of whoever is logged in and running code.
+
+---
+### Variable Functions
+[back to the top](#application-language-cheat-sheet)
+
+**Clear and ClearAll**
+
+- `Clear(myVar);` will reset the specified variable to its default of initialized value. A string will return to an empty string, and a int will return to 0.
+- `ClearAll();` does the same thing as clear, but does it to everything including any keys and filters, with the expection of the Rec variable.
+
+---
+**Evaluate**
+
+Evaluate is used to convert a variable of type (code or text) into a different data type (that isn't code or text). It returns a boolean.
+``` al
+boolean := Evaluate(variable, varToConvert);
+```
+
+---
+**Format**
+
+`Format` can also be used to convert variables.
+``` al
+myString := Format(myInt);
+```
+
+---
