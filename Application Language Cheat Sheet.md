@@ -3,7 +3,10 @@
 
 ## Table of Contents
 1. [Declaring Variables](#declaring-variables)
-2. [Data Types](#data-types)
+2. Data Types
+    - [Fundamental Data Types](#fundamental-data-types)
+    - [Complex Data Types](#complex-data-types)
+    - [Collection Types](#collection-types)
 3. [Operators](#operators)
 4. [XML Docs and Comments](#xml-documentation-comments)
 5. [Conditional Statements](#conditional-statements)
@@ -24,6 +27,18 @@
 9. [Code Units](#code-units)
 10. [Triggers](#triggers)
 11. [Interfaces](#interfaces)
+12. Tables
+    - [ExtendedDatatype Property](#extendeddatatype-property)
+    - [Table Relations](#table-relations)
+    - [Calculated Fields](#calculated-fields)
+    - [Table Extensions](#table-extensions)
+13. Pages
+    - [Page Types](#page-types)
+    - [Page Parts](#page-parts)
+    - [Page Properties](#page-properties)
+    - [Field Properties](#field-properties)
+    - [Page Extensions](#page-extensions)
+    
 
 ## Declaring Variables
 [back to the top](#application-language-cheat-sheet)
@@ -76,11 +91,10 @@ enum 50100 MyEnum
 }
 ```
 ## Data Types
-[back to the top](#application-language-cheat-sheet)
-
 [All Data Types](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/library)
 
-**Fundamental data types**
+### Fundamental data types
+[back to the top](#application-language-cheat-sheet)
 <details>
     <summary>
         Click to view
@@ -105,7 +119,8 @@ enum 50100 MyEnum
 </details>
 
 ---
-**Complex Data Types**
+### Complex Data Types
+[back to the top](#application-language-cheat-sheet)
 <details>
     <summary>
         Click here to view
@@ -136,7 +151,8 @@ enum 50100 MyEnum
 </details>
 
 ---
-**Collection Types**
+### Collection Types
+[back to the top](#application-language-cheat-sheet)
 
 - [Array](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods/devenv-array-methods)
     
@@ -1249,3 +1265,292 @@ The fourth paramater is for subscribing to `OnBeforeValidate` or `OnAfterValidat
 
 an example of using interfaces to provide both backwards compatability and new versions.
 ![interface2](https://docs.microsoft.com/en-us/learn/modules/business-central-interfaces/media/interface-example-2.png)
+
+---
+## Tables
+### Table properties
+[back to the top](#application-language-cheat-sheet)
+**LookupPageId and DrillDownPageId**
+
+When a table is called from a lookup it will use `LookupPageId` property to run a page that will populate the dropdown list.
+``` al
+table 50100 myTable
+{
+    LookupPageId = myPage;
+
+    // ...
+}
+```
+Similarly the `DillDownPageId` property is used to define the page that should run when a drill-down action is selected.
+``` al
+table 50100 myTable
+{
+    DrillDownPageId = myPage;
+
+    // ...
+}
+```
+You can use the page's ID but it is recommended to use its name instead.
+
+---
+### Fields
+[back to the top](#application-language-cheat-sheet)
+
+Fields are how you define the columns of a table or the attributes of an entity. A field takes three paramaters: ID, name, and datatype. In the field you can also declare several properties, such as: `Caption`, `ExtendedDataType`, `TableRelation`, `FieldClass`, `OptionMembers`, and many [more](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/properties/devenv-table-properties).
+``` al
+fields
+{
+    field(id; myAttribute; datatype)
+    {
+        // properties go here
+    }
+
+    field(10; Code; Code[10])
+    {
+        DataClassification = CustomerContent;
+        Caption = 'Code';
+    }
+
+    field(20; myOptions; Option)
+    {
+        DataClassification = CustomerContent;
+        Caption = 'Type';
+        OptionMembers = option1, "option 2", option3;
+        OptionCaption = 'optionCaption1, Option Caption 2, optionCaption3';
+    }
+
+    field(30; "My Table Relation"; Code[20])
+    {
+        DataClassification = CustomerContent;
+        Caption = 'Lookup in another table.';
+        TableRelation = otherTable where(otherAttribute = someCondition);
+    }
+
+    field(40; myCalculatedField; Text[100])
+    {
+        Caption = 'My Calculated Field';
+        Editable = false;
+        FieldClass = FlowField;
+        CalcFormula = lookup(otherTable.myAttribute where(otherTablePK = field("My Table FK"))); // This is a table join
+    }
+}
+```
+---
+**FieldGroups**
+
+If you want to have more columns appear when a dropdown list is called, or define a "Brick" (A carousel of card summaries) you can use a `FieldGroup`. Fields groups are declared after the `Key` section of your table, and are just a list of fields or columns you want to display.
+``` al
+fieldgroups
+{
+    fieldgroup(DropDown; column1, column2, column3, etc...) // The PK and name are included by default
+    {
+    }
+
+    fieldgroup(Brick; field1, field2, field3, field4, field5, field6)
+    {
+    }
+}
+```
+To show an image on a brick you must include a field of type `Media`, `MediaSet`, or `BLOB` as the last field.
+The layout of a brick is generated automatically based off of the number of fields:
+
+![brick layout](https://docs.microsoft.com/en-us/learn/modules/work-with-tables/media/brick-fieldgroup-positions-ss.png)
+
+---
+### ExtendedDatatype Property
+[back to the top](#application-language-cheat-sheet)
+
+This property allows you to give fields special formatting.
+
+- **None** - Default
+- **PhoneNo** - The field will handle a phone number and display a hyperlink when not editable.
+- **URL** - The field will handle links and display as a hyperlink when not editable.
+- **EMail** - The field will handle emails and display as a hyperlink when not editable.
+- **Ratio** - The field will act like a progress bas, but is not supported on the web client.
+- **Masked** - The characters in the field will display as dots.
+- **Person** - The field will act as media representing a person. When left blank it will display a silhouette.
+
+---
+### Table Relations
+[back to the top](#application-language-cheat-sheet)
+
+These are used to create a lookup in a different table via a dropdown menu.
+``` al
+field(1; myAttribute; Code[10])
+{
+    Caption = 'looking up "myAttribute" from "myTable"';
+
+    TableRelation = myTable;
+
+    // You can also filter
+    TableRelation = myTable WHERE (myAttribute = filter(< 10000));
+}
+```
+---
+### Calculated fields
+[back to the top](#application-language-cheat-sheet)
+
+To create a calculated field change the `FieldClass` to a type `FlowField`. Then you must define the `CalcFormula` property with one of the following values:
+
+- **Sum** - The sum of a specified column (Datatype: Decimal).
+- **Lookup** -  Looks up a value in a different table (Datatype: any).
+- **Count** - Counts the number of records from a specified collection (Datatype: integer).
+- **Exist** - Indicates if a record exists in a specified collection (Datatype: boolean).
+- **Average** - Averages the values from a specified collection (Datatype: Decimal).
+- **Min** - Finds the smallest value in a specified collection (Datatype: any).
+- **Max** - Finds the largest value from a specified collection (Datatype: any).
+
+``` al
+field(id; myAttribute; datatype)
+{
+    Caption = 'calculated field';
+    Editable = false;
+    FieldClass = FlowField;
+    CalcFormula = Count ("myAttribute" Where (someCondition));
+}
+```
+---
+### Table Extensions
+[back to the top](#application-language-cheat-sheet)
+
+If you want to add functionality to an existing table you need to make a table extension. You can add more fields, modify existing fields, add new secondary keys, and add or modify triggers.
+
+To modify a field you use `Modify(originalField){ }`.
+
+To add new keys you define them the same as you would a secondary key but, there are some limitations. A new key *cannot* contain fields from the base table and the extension but you can have fields from the base table and the extension in different keys. Additionally, you can add a key with the same name as a key on the base table as long as the new key doesn't have fields from the base table.
+
+---
+## Pages
+### Page Types
+[back to the top](#application-language-cheat-sheet)
+
+ - **Card** - A card page is used for every master table and is an editable form and will only display one record at a time.
+ - **List** - A list page is usually read-only and displays a list of records in a list form.
+ - **Document** - A document page is similar to a card page but is used to enter document data (like a sales order). Because pages can only be linked to one table, these pages are usually linked to a join table.
+ - **ListPart** - A list part page is used to have a list of records on a different page (like the sales lines on a sales order). These pages are typically linked to a "list" table to maintain the one table per page rule.
+  - **CardPart** - Similarly to a `ListPart` a `CardPart` is used to display information that might be usefull from a table that is not linked to the page that the `CardPart` is displayed on (often used in the "factbox area").
+ - **HeadlinePart** - A head line part is displayed at the top of a `RoleCenter` and is used to show important insights.
+ - **RoleCenter** - A rolecenter page is the main page for a user in BC, it is used as their starting point or dashboard. Rolecenters are not linked to any table, but use page parts to display their information.
+ - **Worksheet** -  A worksheet is where a user will enter information into a list of records (like journals).
+ - **ConfirmationDialog** - These are used to display a message to the user that requires a yes/no response.
+ - **StandardDialog** - A regular dialog popup that the user can cancel, sometimes used to start a process or task.
+ - **ListPlus** - A `ListPlus` is a named collection of `ListParts`.
+ - **Navigate** - Navigate pages are typically used to create wizards.
+ - **API** - These pages are used to create RESTFUL services and are not displayed in any user interface, more information [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-api-pagetype).
+
+ ---
+ ### Page Properties
+ [back to the top](#application-language-cheat-sheet)
+
+ - **PageType** - This is used to define the layout and thus the role of your page. See the [Page Types](#page-types) for a list of the available page types.
+ - **CardPageId** - This is used to define the page that will open when a user selects a record from a list.
+ - **SourceTable and SourceTableView** - `SourceTable` is used to define the table that the page is linked to and will display information from. `SourceTableView` allows you to sort and filter the records that will be displayed.
+ - **InsertAllowed, ModifyAllowed, and DeleteAllowed** - These properties define wheather you want the user to be able to perform those specific operations. The default for these properties is `yes`.
+ - **DataAccessIntent** - Is used for performance reasons and defines wheather the accessed records should be sent as a `ReadOnly` replica. This can only be used on `Page`, `Report`, and `Query` type pages. If a insert, delete, or modify operation is attempted on a replica it will throw an error. The two values are: `ReadOnly` and `ReadWrite` which specify the intent to the server.
+ - **UsageCategory** - This is used to allow a user to be able to search for your page. You can use the following values: `Administration`, `Documents`, `History`, `Lists`, `None`, `ReportsAndAnalysis`, and `Tasks` depending on your usecase. List pages usually have a `UsageCategory` set and the `ApplicationArea` should be set at the page level. Card pages should have the `UsageCategory` set to **`None`** as you most likely want the user to access this page from a list page.
+
+ ---
+ ### Page Parts
+ [back to the top](#application-language-cheat-sheet)
+
+ To link page parts to a page use `Part(partName; partSource)`:
+ ``` al
+part(myPart; myPartPage)
+{
+    SubPageLink = "No." = FIELD("No."),
+                  myTableField = FIELD(myPageField),
+                  etc...;
+
+    SubPageView = myFilter | mySort;
+}
+```
+`SubPageLink` is used to link the fields from the table on the pagePart to the fields on the page the part is displayed on.
+`SubPageView` is used to define any filters or sorting.
+
+---
+### Field Properties
+[back to the top](#application-language-cheat-sheet)
+
+- **NotBlank and ShowMandatory** - `NotBlank` is used to define a field as required and will display an error if that field is left blank. `ShowMandatory` displays a visual indication that a field is required but will not display an error if that field is left blank.
+- **UpdatePropagation** - This property is used to define what should happen when a subpage is modified. It has two values `Subpage` which will only modify the subpage and `Both`, which will modify both the subpage and the main page.
+- **ApplicationArea** - This property is found in various other places throughout the code and defines weather or not a control (in this case) should be shown or hidden, based off of the users license. If there are multiple application areas enabled in a session, any controls that do *not* have the `ApplicationArea` property defined will *not* be shown.
+
+---
+### Page Extensions
+[back to the top](#application-language-cheat-sheet)
+
+Just like you can extend tables you can extend pages. In a page extension you can add new fields and modify some properties of existing fields as well as some of the pages properties.
+
+In the layout section of the extension you can use several keywords:
+- **addfirst(area|group)** - Allows you to define the control(s) that will be positioned first in the specified area or group.
+- **addlast(area|group)** - Allows you to define the control(s) that will be positioned last in the specified area or group.
+- **addafter(group|control)** - Allows you to define the control(s) that will be added directly after the specified group or control.
+- **addbefore(group|control)** - Allows you to define the control(s) that will be added directly before the specified group or control.
+- **modify(control)** - Used to modify the properties of an existing control.
+- **movefirst(area|group; control(s))** - Used to move the specified controls to the start of the specified area or group.
+- **movelast(area|group; control(s))** - Used to move the specified controls to the end of the specified area or group.
+- **moveafter(group|control; control(s))** - Used to move the specified controls directly behind the specified group or control.
+- **movebefore(group|control; control(s))** - Used to move the specified controls directly before the specified group or control.
+
+The following is a list of page properties that can be modified with a page extension:
+<details>
+    <summary>
+        click to show
+    </summary>
+
+- AdditionalSearchTerms
+- Caption
+- DataCaptionExpression
+- Description
+- Editable
+- InstructionalText
+- PromotedActionCategories
+</details>
+
+The following is a list of field properties that can be modified with a page extension:
+<details>
+    <summary>
+        click to show
+    </summary>
+
+- ApplicationArea
+- AssistEdit
+- BlankZero
+- Caption
+- CaptionClass
+- ClosingDates
+- Description
+- Enabled
+- Editable
+- Visible
+- Width
+- HideValue
+- Importance
+- ShowCaption
+- ShowMandatory
+- QuickEntry
+- ToolTip
+- Style
+- StyleExpr
+</details>
+
+The following is a list of action and actionGroup properties that can be modified with a page extension
+<details>
+    <summary>
+        click to view
+    </summary>
+
+- Caption
+- Tooltip
+- Description
+- Enabled
+- Visible
+- ApplicationArea
+- Promoted
+- PromotedIsBig
+- PromotedOnly
+- PromotedCategory
+- ShortcutKey
+</details>
+
+---
