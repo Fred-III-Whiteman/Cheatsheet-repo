@@ -38,6 +38,11 @@
     - [Page Properties](#page-properties)
     - [Field Properties](#field-properties)
     - [Page Extensions](#page-extensions)
+14. [Reports](#reports)
+    - [Request Page](#request-page)
+    - [Substituting a Report](#substituting-a-report)
+15. [Permissions and Entitlements](#permissions-and-entitlements)
+16. [Build your extension](#build-you-extension)
     
 
 ## Declaring Variables
@@ -1554,3 +1559,364 @@ The following is a list of action and actionGroup properties that can be modifie
 </details>
 
 ---
+## Reports
+[back to the top](#application-language-cheat-sheet)
+
+Reports are an important part of running a business so as you continue to extend BC making custom reports for your extensions is a good Idea. Reports have a long list of possible properties which can be found [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/properties/devenv-report-properties). All names in the report should follow the Common Language Specification (CLS) standard.
+``` al
+report Id MyReport
+{
+    // Report properties go here
+    UsageCategory = Administration;
+    ApplicationArea = All;
+
+    // This is where you define the data that you want to display on the report.
+    dataset
+    {
+        // Any table that is defined here will be read in its entirety for each time it is defined. 
+        dataitem(DataItemName; SourceTableName)
+        {
+            DataItemTableView = where(someFilter); // This allows you to add filters to the results. This may block the user from selecting certain options or run along side them.
+            // You can have as many columns as you want but they must be a field in a table, a variable, an expression, or a text constant. Adding more fields then required will increase the performance hit.
+            column(ColumnName; SourceFieldName)
+            {
+
+            }
+        }
+        // To create a table relation:
+        dataitem(ParentItemName; parentTableName)
+        {
+            PrintOnlyIFDetail = true; // This acts like an SQL inner table join
+            // This acts like a FOR loop
+            dataitem(ChildItemName; childTableName)
+            {
+                // It is a good idea to add these properties to avoid creating unnecessarily long reports.
+                DataItemLinkReference = parentDataItem
+                DataItemLink = relation (ex. "Bill-to Customer No."(FK) = field("No."(PK));)
+            }
+        }
+    }
+
+    requestpage
+    {
+        layout
+        {
+            area(Content)
+            {
+                group(GroupName)
+                {
+                    field(Name; SourceExpression)
+                    {
+                        ApplicationArea = All;
+                    }
+                }
+            }
+        }
+
+        actions
+        {
+            area(processing)
+            {
+                action(ActionName)
+                {
+                    ApplicationArea = All;
+                }
+            }
+        }
+    }
+
+    var
+        myInt: Integer;
+}
+```
+---
+### Custom Layouts
+
+To customize the layout of the report you have to use Visual Studio Report Designer or Microsoft SQL Server Reporting Services Report Builder. You also have to specify properties for an RDLC layout or a Word layout:
+``` al
+// You can have both the RDLCLayout and WordLayout but only one DefaultLayout.
+RDLCLayout = 'Example_RDLCLayout.rdl';
+DefaultLayout = RDLC;
+
+// --------------------
+
+WordLayout = 'Example_WORDLayout.docx';
+DefaultLayout = Word;
+```
+---
+### Translations
+
+Reports often need to be translated to the native language of the user or their customers. To ensure that its possible to do so you can use the `IncludeCaption` property on the column to use the caption from that field in the database. If you need to add text that isn't related to a field in the database you should use a label.
+``` al
+labels
+{
+    myLabel = 'Label Text', comment = 'Comment Text', MaxLength = 999, Locked = true;
+}
+```
+- Comment is generally used to make clarifications about the placeholders in the label.
+- Locked determines if the label should be translated or not.
+- Maxlength determines how much of the label is used.
+
+If you need the report to be able to change languages on the fly (based off a language code on a customer card for example) you wont be able to use `IncludeCaption` or the `labels` section as they are static. To achieve this you must set a caption a label:
+- **FieldCaption** - Retrives the current fields caption as a string. `currentCaption := Record.FieldCaption(Field: myField);`
+- **TableCaption** - Retrives the current table caption as a string. `currentTCaption := Record.TableCaption();`
+
+To programatically declar labels use:
+``` al
+var
+    myLabel: Label 'Label Text', Comment = 'Comment Text', MaxLength = 999, Locked = true;
+```
+To get the current language code you can use `CurrReport.Language := Language.GetLanguageIdOrDefault("Language Code");` in the `OnAfterGetRecord()` trigger in the dataitem for a customer.
+
+---
+### Request Page
+[back to the top](#application-language-cheat-sheet)
+
+A request page is used to allow the user to customize portions of the report and to choose to send, print or preview the report. A basic request page will be made for your reports that has basic control and filtering options. To customize the request page the following properties can be used on the report object:
+- **RequestFilterHeading** - Sets a caption for the request page tab that is related to a data item on the report or an XMLport's table element.
+- **RequestFilterHeadingML** - Sets the text used as a `RequestFilterHeading` property for a request page.
+- **RequestFilterFields** - Used to specify which fields to include on the request page that the user will be able to filter.
+- **UseRequestPage** - Decides wheather a request page will be available at all. If it is false the report will run as defined and the user may not be able to cancel it.
+
+To make it so that the user cant sort a table, define a `DataItemTableView` property and don't include that dataItem in the `RequestFilterFields` property.
+
+To create custom options on the request page you add them to the `requestpage` section of the report object.
+``` al
+requestpage
+    {
+        SaveValues = true; // This saves the values that the user has previously entered.
+        layout
+        {
+            area(Content)
+            {
+                group(GroupName)
+                {
+                    field(Name; SourceExpression)
+                    {
+                        ApplicationArea = All;
+
+                    }
+                }
+
+                // Example of a custom option
+                group(Options)
+                {
+                    field(optionYN; optionYN)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'Show option?';
+                    }
+                }
+            }
+        }
+
+        actions
+        {
+            area(processing)
+            {
+                action(ActionName)
+                {
+                    ApplicationArea = All;
+
+                }
+            }
+        }
+    }
+// global for custom option
+var
+    optionYN: boolean;
+
+// Then add this trigger to the dataitem you want to use the option on
+trigger OnPreDataItem()
+begin
+    if optionYN then
+        // show option
+end;
+```
+---
+### Report Triggers
+[back to the top](#application-language-cheat-sheet)
+
+You can add triggers to your reports to add even more custom functionality, an example of this has already been shown in the [Request Page](#request-page) section.
+
+Report triggers include:
+- **OnInitReport** - Runs when the report is loaded.
+- **OnPreReport** - Runs before the report is run but after the request page.
+- **OnPostReport** - Runs after the report, but not if it was manually stopped.
+- **OnPreDataItem** - Runs before the dataitem is processed but after it has been initialized.
+- **OnAfterGetRecord** - Runs when a record is retrived from the table
+- **OnPostDataItem** - Runs when the dataitem is on its last iteration.
+
+![Trigger order](https://docs.microsoft.com/en-us/learn/modules/understand-report-triggers-functions/media/report-triggers-c.png)
+
+While in the scope of these triggers you have access to a special variable: `CurrReport`. With this variable you can use these special functions:
+- **`CurrReport.SKIP`** - Skip the current record. The skipped record wont be included in any totals. Skip is inherently slower then never reading the record in the first place, so using appropriate filters is encouraged.
+- **`CurrReport.BREAK`** - This will skip the remaining records for the current dataitem as well as any indented dataitems.
+- **`CurrReport.Quit`** - Skips the rest of the report. Any changes wont be committed and the `OnPostReport` trigger wont run.
+- **`CurrReprot.PREVIEW`** - This is used to determin if the report is in preview mode. This should be checked to determine when and which custom functionality to call.
+
+---
+### Processing only Reports
+[back to the top](#application-language-cheat-sheet)
+
+These reports act more like schedulable tasks, but they are built around the report system. To make a processing only report, add the `ProcessingOnly` property. You should keep most logic in the `OnAfterReport` trigger and frequently use dialog so the user knows whats happening.
+
+The reason to use processing only reports is so that the use can modify it with options and filters, same as a normal report. They are also easier to code and maintain as most of the heavy lifting has already been done and its easier to visualize the data.
+
+---
+### Substituting a report
+[back to the top](#application-language-cheat-sheet)
+
+To substitute an existing report with your own custom report you need to subscribe to the `OnAfterSubstituteReport` event.
+``` al
+codeunit 50100 "Substitute Report"
+{
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::ReportManagement, 'OnAfterSubstituteReport', '', false, false)]
+    local procedure OnSubstituteReport(ReportId: Integer; var NewReportId: Integer)
+    begin
+        if ReportId = Report::"Customer - List" then
+            NewReportId := Report::"My New Customer - List";
+    end;
+}
+```
+---
+### Extending Reports
+[back to the top](#application-language-cheat-sheet)
+
+Existing reports can be extended to be able to add data items, columns, modify the request page, and to provide a new layout. IF you want to modify the report triggers or modify any existing data items you have to use [report substitution](#substituting-a-report).
+
+``` al
+report ID myReport
+{
+    dataset
+    {
+        dataitem(anchorDataItem; sourceTable) { }
+    }
+
+    protected var
+        existingVar: Integer;
+}
+
+reportextension Id myExtension extends myReport
+{
+    dataset
+    {
+        // Add new dataitems or columns here
+        add(anchorDataItem)
+        {
+            column(newCol1; fieldName) { }
+
+            column(newCol2; myVar) { }
+        }
+
+        // To nest a new data item use addFirst or addLast
+        addLast(anchorDataItem)
+        {
+            // New dataitem
+            dataitem(newDataItem; sourceTable)
+            {
+                // create relation
+                DataItemLink = FK = field(PK);
+
+                column(newCol3; existingVar) { }
+
+                // You can new nested dataitems too
+                dataItem(newChild; sourceTable)
+                {
+                    // relation and columns etc...
+                }
+            }
+        }
+
+        // To add alongside existing data items use addBefore and addAfter
+        addAfter(anchorDataitem)
+        {
+            dataitem(newDataItem; sourceTable)
+            {
+                column(newCol4; myVar + 5) { }
+
+                column(newCol5; myProcedure()) { }
+            }
+        }
+    }
+
+    var
+        myVar: Integer;
+
+    requestpage
+    {
+        // Add changes to the requestpage here. you cannot add or modify properties though.
+    }
+}
+```
+Layouts are not required for report extensions, but you can create a new one from scratch or pull the existing layout from the client, add to it and manually upload it. If you are using a new layout you have to assign them to the report manually and uninstall them manually.
+
+---
+## Permissions and Entitlements
+[back to the top](#application-language-cheat-sheet)
+
+Permissions and Entitlements are used to restrict access to certain tables or codeunits to a role or license level. Entitlements are made up of permissionSets and are used to restrict access based off of license type.
+``` al
+entitlement myEntitlement
+{
+    Type = Role; // associated with an Azure AD role
+    RoleType = Delegated;\
+    Id = 'app GUID'
+    ObjectEntitlements = "license"
+}
+```
+PermissionSets are used to create roles or to group permissions and entitlements.
+``` al
+permissionset id myPermissions
+{
+    Assignable = true; // allow this permissionSet to be assigned to users
+    Caption = 'My Permissions';
+
+    Permissions = 
+        tabledata myTable = RMID, // Read, Modify, Insert, Delete
+        tabledata Customer = RMI, // Used to modify permission level
+        etc..
+}
+
+permissionset 50100 appPermissions
+{
+    Assignable = true;
+    Caption = 'Base Permissions for my app';
+    IncludedPermissionSets = myPermissions; // Include other permissions, in effect extending and reusing them
+
+    Permissions =
+        codeunit myCode = x,
+        tabledata sales = R,
+        etc...
+}
+```
+You can also extend an existing permissionset. This is particularly usefull when an extension is added to BC as the now required permissions will be added automatically and if that extension is removed those permissions will also be removed.
+
+``` al
+permissionsetextension 50101 "myPermissions Ext." extends myPermissions
+{
+    Assignable = true;
+    Caption = 'Extended Permissions'
+
+    Permissions =
+        tabledata Customer = D,
+        etc...
+}
+```
+---
+## Checking Performance
+[back to the top](#application-language-cheat-sheet)
+
+It is important that any new extension or update doesn't come with unintended performance hit. To check the performace of your extension download and install the [Performance Toolkit](https://appsource.microsoft.com/product/dynamics-365-business-central/pubid.microsoftdynsmb%7Caid.75f1590f-55c5-4501-ae63-bada5534e852%7Cpappid.75f1590f-55c5-4501-ae63-bada5534e852?tab=overview) and the [BCPT-SampleTests](https://github.com/microsoft/ALAppExtensions/tree/master/Other/Tests/BCPT-SampleTests) into the session of BC you want to test. To run a meaningfull test you'll have to configure the BCPT test suite which can be done by searching 'BCPT Suites' and creating a new suite. Once everything is configured you need to set up the run command. 
+To create a credential object run this command:
+`$Credential = New-Object PSCredential -ArgumentList <user email>,(ConvertTo-SecureString -String <password> -AsPlainText -Force)`
+Then run this command to start the test
+`RunBCPTTests.ps1 -Environment PROD -AuthorizationType AAD -Credential $Credential -SandboxName <sandbox name> -TestRunnerPage 149002 -SuiteCode "TRADE-50U"`
+Note that anyting inside of the angle brackets `<>` should be updated.
+When the test is finished the results will be on the BCPT Suite Lines FastTab.
+
+---
+## Build your extension
+[back to the top](#application-language-cheat-sheet)
+
+To build an extension that you want to publish press **Ctrl+Shift+B**. This will create a .app package that can be deployed to a BC environment or uploaded to AppSource.
