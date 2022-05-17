@@ -111,16 +111,16 @@ enum 50100 MyEnum
     - [BigInteger](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/biginteger/biginteger-data-type)
     - [Decimal](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/decimal/decimal-data-type)
     - [Option](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/option/option-data-type)
-    - [Char](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/char/char-data-type)
-    - [Byte](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/byte/byte-data-type)
-    - Duration
 - String
     - [Text](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/text/text-data-type)
     - [Code](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/code/code-data-type)
+    - [Char](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/char/char-data-type)
+    - [Byte](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/byte/byte-data-type)
 - Boolean
 - [Date](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/date/date-data-type)
 - [Time](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/time/time-data-type)
 - [DateTime](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/datetime/datetime-data-type)
+- [Duration](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/duration/duration-data-type)
 </details>
 
 ---
@@ -153,6 +153,8 @@ enum 50100 MyEnum
 - [Variant](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/variant/variant-data-type)
 - [List](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/list/list-data-type)
 - [Dictionary](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/dictionary/dictionary-data-type)
+
+*I'm unsure if the link is correct.
 </details>
 
 ---
@@ -236,13 +238,13 @@ Order of operations can be manipulated with the use of subexpressions `()`
 ///     A summary of the object
 /// </summary>
 /// <param name="paramName">
-///     Used to define one or more paramaters in a method. Include a name a description
+///     Used to define one or more paramaters in a method. Include a name and description
 /// </param>
 /// <returns>
 ///     Used to describe the return value
 /// </returns>
 /// <example>
-///     USed to provide an example of the code in use
+///     Used to provide an example of the code in use
 /// </example>
 /// <remarks>
 ///     used to add additional comments about the code.
@@ -303,10 +305,10 @@ case "Document Type" of
     "Document Type"::Order:
         statement;
     "Document type"::Invoice:
-        begin
-            statement1;
-            statement2;
-        end;
+    begin
+        statement1;
+        statement2;
+    end;
     "Document Type"::"Return Order":
         If Reason = Reason::Return then begin
             statement1;
@@ -433,15 +435,15 @@ else
 
 Prompts the user for information or to select from a series of choices.
 ``` al
-OptionNumber := StrMenu(OptionString [,DefaultNumber] [,Instruction]);
+optionNumber := StrMenu(optionString [,defaultNumber] [,instruction]);
 
 var
-   Days: Text[50];
-   Selection: Integer;
+   days: Text[50];
+   selection: Integer;
 begin
-   Days := 'Monday,Tuesday,Wednesday,Thursday,Friday';
-   Selection := StrMenu(Days, 1, 'Which day is today?');
-   Message('You selected %1.', Selection);
+   days := 'Monday,Tuesday,Wednesday,Thursday,Friday';
+   selection := StrMenu(days, 1, 'Which day is today?');
+   Message('You selected %1.', selection);
 end;
 ```
 
@@ -482,7 +484,7 @@ Message(%1, myString.IndexOf('w')); // returns 7
 
 These can be used to return a section of a string.
 ``` al
-NewString := CopyStr(String, StartIndex, [Length]); // length is optional
+newString := CopyStr(String, StartIndex, [Length]); // length is optional
 
 myString := 'Hello World!';
 Message(%1, CopyStr(myString, 7)); // returns 'World!'
@@ -951,9 +953,7 @@ begin
     myRecord.FindSet(); // Queries SQL for all records via SELECT * FROM myRecord
 end;
 ```
-
 ---
-
 **Next**
 
 To get the next record from a serires of records use the `Next();` function
