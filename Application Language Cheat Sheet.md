@@ -40,9 +40,19 @@
     - [Page Extensions](#page-extensions)
 14. [Reports](#reports)
     - [Request Page](#request-page)
+    - [Report Triggers](#report-triggers)
+    - [Processing Only Reports](#processing-only-reports)
     - [Substituting a Report](#substituting-a-report)
-15. [Permissions and Entitlements](#permissions-and-entitlements)
-16. [Build your extension](#build-you-extension)
+    - [Extending Reports](#extending-reports)
+15. [Testing](#testing)
+    - [Test Codeunits and Test Methods](#test-codeunits-and-test-methods)
+    - [Test Runner Codeunit](#test-runner-codeunit)
+    - [Test Pages](#test-pages)
+    - [UI handlers](#ui-handlers)
+    - [ASSERTERROR](#asserterror)
+    - [Testing best practices](#testing-best-practices)
+16. [Permissions and Entitlements](#permissions-and-entitlements)
+17. [Build your extension](#build-you-extension)
     
 
 ## Declaring Variables
@@ -1851,6 +1861,169 @@ reportextension Id myExtension extends myReport
 ```
 Layouts are not required for report extensions, but you can create a new one from scratch or pull the existing layout from the client, add to it and manually upload it. If you are using a new layout you have to assign them to the report manually and uninstall them manually.
 
+---
+## Testing
+[back to the top](#application-language-cheat-sheet)
+
+You can test your code in an online sandbox, or an on-premises production/container dev environment. 
+
+### Test Codeunits and Test Methods
+[back to the top](#application-language-cheat-sheet)
+
+To test your code you can make test codeunits and test methods. Test codeunits have a `SubType` value of `Test`. When a test codeunit is run it will run the OnRun trigger and then each of the methods in the codeunit. The test will result in either a **success** or a **failure**. By default each test method will run on a separate database transaction, this can be changed with the use of the `TransactionModel` attribute on test methods and the `TestIsolation` property on Test Runners.  There are three types of test methods: 
+- **`test`** - This method type is used to test the business logic in the extension. To make a test method declare the `[Test]` attribute on a procedure.
+- **`handler`** - The handler method is used to handle any instances where user interation is required. There are various types of handler methods that can be found [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-creating-handler-methods) or go to the [UI handler](#ui-handler) section for more information.
+- **`normal`** - A normal method is used to structure the test code. To make a normal method you declare the `[Normal]` attribute.
+
+---
+### Test Runner codeunit
+[back to the top](#application-language-cheat-sheet)
+
+A test runner codeunit will handle several other test codeunits to allow for automated testing. They have the `SubType` property set to `TestRunner` and they have three triggers: `OnRun`, `OnBeforeTestRun`, and `OnAfterTestRun`. You use the `OnRun` trigger to define which test codeunits to run. If you need to perform any processing before or after all of the test codeunits are run you use the `OnBeforeTestRun` and `OnAfterTestRun` triggers.
+
+``` al
+codeunit 50101 TestRunnerCodeunit
+{
+    Subtype = TestRunner;
+
+    trigger OnRun()
+    begin
+        Codeunit.RUN(Codeunit::"testCodeunit1");
+        Codeunit.RUN(Codeunit::"testCodeunit2");
+        Codeunit.RUN(Codeunit::"testCodeunit3");
+
+    end;
+}
+```
+
+You can use the following to define the tests in a table and run only specific tests
+``` al
+codeunit 50102 TestRunnerCodeunit
+{
+    Subtype = TestRunner;
+
+    trigger OnRun()
+    var
+        EnabledTestCodeunit: Record "CAL Test Enabled Codeunit";
+        Object: Record "Object";
+    begin
+        if EnabledTestCodeunit.FINDSET then
+            repeat
+                if Object.GET(ObjectType::Codeunit, '', EnabledTestCodeunit."Test Codeunit ID") then
+                    CODEUNIT.RUN(EnabledTestCodeunit."Test Codeunit ID");
+            until EnabledTestCodeunit.NEXT = 0
+
+    end;
+}
+```
+---
+### Test Pages
+[back to the top](#application-language-cheat-sheet)
+
+Test pages allow you to simulate user interaction by using AL. A list of all available test page methods can be found [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/testpage/testpage-data-type). There are two types or test pages: `TestPage`, which can be any page or page part, and `TestRequestPage` which represents a request page for a report. To open a test page in the code you can use the following:
+``` al
+var
+    myTestPage: TestPage;
+begin
+    myTestPage.Trap(); // assigns the next test page that is called to the variable.
+    myTestPage.OpenNew(); // opens a new test page
+    myTestPage.OpenEdit(); // opens a test page in edit mode
+    myTestPage.OpenView(); // opens a test page in view mode
+
+    // test logic
+end;
+```
+
+To access the pages fields and properties you use the dot notation.
+``` al
+var
+    customerCard: TestPage;
+    custNo: Integer;
+begin
+    customerCard.Trap();
+    customerCard.Name // will access the name field
+    custNo := customerCard."No.".value // will assign the value of the "No." field to custNo
+end;
+```
+
+To navigate through pages you use AL methods. To navigate through page records you can use the `.Next()`, `.Previous()`, `.First()`, `.Last()`, `.GoToRecord(Rec: myRecord)`, `.GoToKey([value: any,...])`, `.FindFirstField(Field: myField, value: any)`, `.FindNextField(Field: myField, Value: Any)`, and `.FindPreviousField(Field: myField, value: any)` methods. All of these methods return an optional boolean, if you opt not to use the return value and the call fails, it will throw a runtime error.
+``` al
+// testPage.pagePart.field.value to access page parts
+customerCard."Sales Hist. Sell-to factBox"."No.".value
+```
+
+You can filter the data that can be accessed on the test pages. All of the possible filters can be found [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/testfilter/testfilter-data-type)
+``` al
+// testPage.Filter.filterMethod();
+CustomerList.Filter.SetFilter("No.", '20000..30000');
+```
+To access page actions you also use the dot notation then the `.Invoke()` method. For actions that require a response or user input you can use the `.Yes()`, `.No()`, `.OK()`, and `.Cancel()` methods
+---
+### UI Handlers
+[back to the top](#application-language-cheat-sheet)
+
+In order to automate tests you need to handle UI requests. When running test thorugh a Test Runner any unhandled UI will cause a failure but, if you run test codeunits individually the UI requests will appear as usual.
+
+The following handler methods can be used to handle UI events:
+- **MessageHandler** - Used to handle `Message` statements. `procedure myMessageHandler(myMessage: Text[1024])`
+- **ConfirmHandler** - Used to handle `Confirm` statements. `procedure myConfrimHandler(myConfrimQuestion: Text[1024]; var response: boolean)`
+- **StrMenuHandler** - Used to handle `StrMenu` statements. `procedure myStrMenuHandler(myOptions: Text[1024]; var userChoice: Integer; menuInstruction: Text[1024])`
+- **PageHandler** - Used to handle pages that are *not* run modally. `procedure myPageHandler(var myPage: Page pageId)` or `procedure myTestPageHandler(var myTestPage: TestPage: pageId)`
+- **ModalPageHandler** - Used to handle that are run modally `procedure myModalPageHandler(var myPage: Page pageId; var response: action)` or `procedure myModalTestPageHandler(Var myTestPage: Page pageId)`
+- **ReportHandler** - Used to handle reports. If you create a reprot handler, then it will replace the actual report, including the request page. `procedure myReportHandler(var myReport: Report reportId)`
+- **FilterPageHandler** - Used to handle the UI that is generated by a `FilterPageBuilder`. `procedure myFilterPageHandler(var record1: RecordRef, [; var record2: RecordRef]...[; var record10: RecordRef]): boolean`
+- **RequestPageHandler** - Used to handle a reports request page. `procedure myRequestPageHandler(var myRequestPage: TestRequestPage)`
+- **HyperlinkHandler** - Used to handle hyperlinks. `procedure myHyperlinkHandler(myURL: Text[1024]);`
+- **SendNotificationHandler** - Used to handle `Send` statements. `procedure mySendNotificationHandler(myNotification: Notification): boolean`
+- **RecallNotificationHandler** - Used to handle `Recall` statements. `procedure myRecallNotificationHandler(myNotification: Notification): boolean`
+- **SessionSettingshandler** - Used to handle `RequestSessionUpdate` statements. `procedure mySessionSettingsHandler(var mySessionSettings: SessionSettings): boolean`
+
+Example of a message handler method:
+``` al
+[MessageHandler]
+procedure myMessageHandler(Message: Text[1024])
+begin
+    Assert.IsTrue(StrPos(Message, mySubstring) > 0, Message);
+end;
+```
+You can call your handler methods from methods that have the `[Test]` attribute. Then specify which handler method you want with the `HandlerFunctions` attribute. Your test method should not be able to simulate the UI and be able to enter values or take action. You can specify more then one handler method by using a comma seperated list.
+
+``` al
+[Test]
+[HandlerFunctions('myMessageHandler, myOtherHandler')]
+procedure myTestMethod()
+var
+    myRecord: Record "Some Record";
+begin
+    ...
+end;
+```
+
+---
+### ASSERTERROR
+[back to the top](#application-language-cheat-sheet)
+
+In order to check how the code will handle certain errors you can use the `ASSERTERROR` keyword to simulate any error.
+
+Example of testing a procedure called "CheckDate"
+``` al
+InvalidDate := 010184D;  
+InvalidDateErrorMessage := 'The date is outside the valid date range.';  
+ASSERTERROR CheckDate(InvalidDate);  
+if GETLASTERRORTEXT <> InvalidDateErrorMessage then 
+    ERROR('Unexpected error: %1', GETLASTERRORTEXT);
+```
+
+### Testing Best Practices
+[back to the top](#application-language-cheat-sheet)
+
+1. Test code should be kept separate from production code.
+2. Production code should be tested with positive and negative tests. Ie production code needs to be able to handle both expected and unexpected or erroneous events.
+3. Automated tests should be automated. Ie they should not require any additional input.
+4. Test should leave the environment in the same state it was in before testing.
+5. Tests should be developed with performance in mind.
+6. Tests should follow an "Initialize, Invoke, Validate" pattern.
+7. Random data is preferred over hard coded data.
 ---
 ## Permissions and Entitlements
 [back to the top](#application-language-cheat-sheet)
