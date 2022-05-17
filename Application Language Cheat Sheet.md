@@ -44,15 +44,17 @@
     - [Processing Only Reports](#processing-only-reports)
     - [Substituting a Report](#substituting-a-report)
     - [Extending Reports](#extending-reports)
-15. [Testing](#testing)
+15. [Error Handleing](#error-handling)
+    - [Try Methods](#try-methods)
+16. [Testing](#testing)
     - [Test Codeunits and Test Methods](#test-codeunits-and-test-methods)
     - [Test Runner Codeunit](#test-runner-codeunit)
     - [Test Pages](#test-pages)
     - [UI handlers](#ui-handlers)
     - [ASSERTERROR](#asserterror)
     - [Testing best practices](#testing-best-practices)
-16. [Permissions and Entitlements](#permissions-and-entitlements)
-17. [Build your extension](#build-you-extension)
+17. [Permissions and Entitlements](#permissions-and-entitlements)
+18. [Build your extension](#build-you-extension)
     
 
 ## Declaring Variables
@@ -1861,6 +1863,65 @@ reportextension Id myExtension extends myReport
 ```
 Layouts are not required for report extensions, but you can create a new one from scratch or pull the existing layout from the client, add to it and manually upload it. If you are using a new layout you have to assign them to the report manually and uninstall them manually.
 
+---
+## Error Handling
+[back to the top](#application-language-cheat-sheet)
+
+The following is a list of methods that can be used to handle errors:
+- **ClearCollectedErrors** - Clears all collected errors from the current collection scope.
+- **ClearLastError** - Clears the last error from memory
+- **Error** - Displays an error message and stops executing AL code.
+- **GetCollectedErrors** - Retrives all of the collected errors in the current collection scope.
+- **GetLastErrorCallStack** - Retrives the call stack from where the last error occurred.
+- **GetLastErrorCode** - Retrives the classification of the last error.
+- **GetLastErrorObject** - Retrives the last `system.Exception` object that occurred.
+- **GetLastErrorText** - Retrives the last error that has occurred in the debugger.
+- **HasCollectedErrors** - Indicates wheather any errors have been collected in the current error collection scope.
+- **IsCollectingErrors** - Indicated wheather errors are being collected.
+
+The following are some data types that can help when handleing error:
+- **Dialog** - Represents a dialog window.
+- **ErrorInfo** - Has a number of special methods used to handle errors, which can be found [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/errorinfo/errorinfo-data-type)
+- **System** - A complex data type which also has a number of methods used to handle errors.
+
+**Strategies**
+
+The following are some strategies to handle any potentail errors:
+
+If you are trying to run a codeunit that might throw an error consider calling it in an if statement so if it does error you can do something else. `If not myCodeunit.Run() then ...`
+
+If you are tyring to check for an error and want to display it. `Dialog.Error(Message: errorInfo)` If you want to display more detailed info you can use some of the various methods from the `ErrorInfo` data type.
+
+If you are trying to validate a form and don't want to show a dialog for each error you can use the `[ErrorBehavior(ErrorBehavior::Collect)]` attribute to collect all of the errors to handle at a later time.
+
+If you are trying to catch and handle errors raised by other method you want to use a [try method](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-handling-errors-using-try-methods). You can even handle errors from the .NET framework interoperability.
+
+If you want to log an error that occurred during a transaction that has rolled back you want to log the error in a new session using a background session, or use `session.LogMessage` to log the error to telemetry.
+
+---
+### Try Methods
+[back to the top](#application-language-cheat-sheet)
+
+Try methods are used to catch errors that are thrown during code execution and .NET interoperability. Try methods do not require write transactions to be commitied but any changes to the database within a try method are committed without the possibility of a rollback. Due to this if you try to perform a database write within a try method an error will be thrown.
+
+Try methods can optionally return a boolean value. If you opt to not use the return value the method will act like a normal method and expose errors as usual. To catch errors you must use the method in an `OK:=` statement or an `If-then` statement. It will return true if no errors are caught and false if an error occurs.
+
+To declare a try method use the `[TryFunction]` attribute.
+``` al
+[TryFunction]
+local procedure MyTryMethod()
+begin
+    Error('An error occurred during the operation');
+end;
+
+trigger OnRun()
+begin
+    if MyTryMethod then
+        Message('Everything went well');
+    else
+        Message('Something went wrong');
+end;
+```
 ---
 ## Testing
 [back to the top](#application-language-cheat-sheet)
