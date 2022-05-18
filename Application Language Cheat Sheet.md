@@ -46,15 +46,18 @@
     - [Extending Reports](#extending-reports)
 15. [Error Handleing](#error-handling)
     - [Try Methods](#try-methods)
-16. [Testing](#testing)
+    - [Collecting Errors](#collecting-errors)
+16. [Background Tasks](#background-tasks)
+17. [Accessing Device Capabilities](#accessing-device-capabilities)
+18. [Testing](#testing)
     - [Test Codeunits and Test Methods](#test-codeunits-and-test-methods)
     - [Test Runner Codeunit](#test-runner-codeunit)
     - [Test Pages](#test-pages)
     - [UI handlers](#ui-handlers)
     - [ASSERTERROR](#asserterror)
     - [Testing best practices](#testing-best-practices)
-17. [Permissions and Entitlements](#permissions-and-entitlements)
-18. [Build your extension](#build-you-extension)
+19. [Permissions and Entitlements](#permissions-and-entitlements)
+20. [Build your extension](#build-you-extension)
     
 
 ## Declaring Variables
@@ -180,6 +183,87 @@ enum 50100 MyEnum
 
 - [List](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/list/list-data-type)
 - [Dictionary](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/methods-auto/dictionary/dictionary-data-type)
+
+---
+### Formatting 
+[back to the top](#application-language-cheat-sheet)
+
+**Decimals**
+
+To format a decimal value you use a combination of the following properties: `AutoFormatType`, `AutoFormatExpression`, and `DecimalPlaces`. You can use the `AutoFormatType` and `AutoFormatExpression` properties directly on a pages field or on a table field. If they are set on a page field the formmatting will only be used on that page, If you set them on the table they will have that formatting everywhere. If they are set on both table and page, the page will take priority. When these properties are set they will create two events `OnResolveAutoFormat` and `OnAfterAutoFormat`.
+
+The `AutoFormatType` property can have the following values:
+
+- **0** - The Default value. Uses the `DecimalPlaces` property to set the number of decimal places and ignores the `AutoFormatExpression` property.
+The rest of the values use `AutoFormatExpression` and ignores `DecimalPlaces`
+- **1** - Used to format the value as a currency. Set `AutoFormatExpression` to the desired currency code.
+- **2** - Is the same as 1 except it will be set as a unit amount.
+- **10** - This will format the data based on the `AutoFormatExpression` expression, which will be using the 'Standard formmating expressions'
+- **11** - This will format the data based on the `AutoFormatExpression` expression however, you have full control of the formatting.
+
+When `AutoFormatType` has a value of **10**, `AutoFormatExpression` will use the following possible 'standard formats':
+| Standard Format | Format Description | Europe Decimal Example | US Decimal Example |
+|-----------------|--------------------|------------------------|--------------------|
+| 0 | `<Sign><Integer Thousand><Point or Comma><Decimals>` | -76.543,21 | -76,543.21 |
+| 1 | `<Sign><Integer><Point or Comma><Decimals>` | -76543,21 | -76543.21 |
+| 2 | `<Sign><Integer><Point or Comma><Decimals>` | -76543.21 | -76543.21 |
+| 3 | `<Integer Thousand><Point or Comma><Decimals><Sign>` | 76.543,21- | 76,543.21- |
+| 4 | `<Integer><Decimals><Point or Comma><Sign>` | 76543,21- | 76543.21- |
+| 9 | XML format | -76543.21 | -76543.21 |
+
+---
+**Dates**
+
+To foramt dates you use the `Format` function, which has three basic formatting options:
+- **0** - default
+- **1** - standard format 2
+- **2** - AL Code constant format.
+or you can use `Format` to make your own custom format. To do so you can use any number of chars, fields, or attributes. fields and attributes must have an identifier enclosed in angle brackets. Attributes must have a parameter following a comma and Fields can optionally have a comma and a `FieldLen`.
+
+Some examples of custom formatting syntax:
+
+`FormatProperty :=	[<Char> | <Field> | <Attribute>]`
+
+---
+`<Char> :=	character with ASCII value [32..255]`
+
+---
+`<Field> :=	'<' <FieldName> [',' <FieldLen>] '>' [, <Attribute>]`
+
+---
+`<FieldName> :=	literal name of field (format component)`
+
+---
+`<FieldLen> :=	length of field (0 or no entry means that the length is dynamic)`
+
+---
+`<Attribute> :=	['<' <AttributeName> ',' <Char> '>']`
+
+---
+`<AttributeName> :=	[Standard Format | 1000Character | Comma | Overflow | Filler Character | Precision]`
+
+The '1000character' denotes the character or symbol to be used as a thousandths separator.
+The 'Comma' attribute denotes the character or symbol to be used as a decimal point.
+'Filler Character' denotes the character or symbol that will be used to fill in empty spaces.
+and 'FieldName' is used to build the format expression, you can use the following values depending on the datatype in the field.
+
+For `Decimal` use `Sign`, `Integer`, `Decimals`, or `Integer Thousand`.
+For `Date` use `Day`, `Month`, `Month Text`, `Quarter`, `Year`, `Year4`, `Week`, `Week Year`, `Week Year4`, `Weekday`, `Weekday Text`, or `Closing`.
+For `Time` use `Hours24`, `Hours12`, `Minutes`, `Seconds`, `Thousands`, `AM/PM`, or `Second dec`. `Second dec` is a fraction of a second in decimal format.
+For `DateTime` use `Day`, `Month`, `Month Text`, `Quarter`, `Year`, `Year4`, `Week`, `Week Year`, `Week Year4`, `Weekday`, `Weekday Text`, `Hours24`, `Hours12`, `Minutes`, `Seconds`, `Thousands`, `AM/PM`, or `Second dec`.
+For `Integer` or `BigInteger` use `Sign`, `Integer`, or `Integer Thousand`.
+For `Boolean` use `Text` or `Number`.
+For `Option` use `Text` or `Number`.
+For `Code` use `Text`.
+For `Char` use `Char/Number`, `Char`, or `Number`.
+For `Text` use `Text`.
+
+Examples:
+`<Standard Fromat, 5>` will use standard format 5.
+`<Precision, 2:3><Standard Format, 0>` will use standard format 0 with 2-3 decimal places.
+`<Weekday Text>, <Month Text> <Day>` will create "Wendsday, May 18" for a field of type `Date`
+
+For more examples see [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-format-property#standard-decimal-formats)
 
 ---
 ## Operators
@@ -1923,6 +2007,486 @@ begin
 end;
 ```
 ---
+### Collecting errors
+[back to the top](#application-language-cheat-sheet)
+
+Example of error collection while posting
+``` al
+pageextension 50100 CollectingErrorsExt extends "Customer List"
+{
+    actions
+    {
+        addfirst(processing)
+        {
+            // This action doesn't collect errors. Any procedure will stop on the first error that occurs,
+            // and return the error.
+            action(Post)
+            {
+                ApplicationArea = All;
+                trigger OnAction()
+                var
+                    i: Record Integer;
+                begin
+                    i.Number := -9;
+                    Codeunit.Run(Codeunit::DoPost, i);
+                end;
+            }
+
+            // This action collects errors. The PostWithErrorCollect procedure continues on errors,
+            // and displays the errors in a dialog to the user done.
+            action(PostWithErrorCollect)
+            {
+                ApplicationArea = All;
+                trigger OnAction()
+                begin
+                    PostWithErrorCollect();
+                end;
+            }
+
+            // This action collects errors. The PostWithErrorCollectCustomUI procedure continues on errors,
+            // and displays error details in a list page when done.
+            // This implementation illustrates how you could design your own UI for displaying and
+            // troubleshooting errors.
+            action(PostWithErrorCollectCustomUI)
+            {
+                ApplicationArea = All;
+                trigger OnAction()
+                begin
+                    PostWithErrorCollectCustomUI();
+                end;
+            }
+        }
+    }
+
+    [ErrorBehavior(ErrorBehavior::Collect)]
+    procedure PostWithErrorCollect()
+    var
+        i: Record Integer;
+    begin
+        i.Number := -9;
+        Codeunit.Run(Codeunit::DoPost, i);
+        // After executing the codeunit, there will be collected errors,
+        // and therefore an error dialog will be shown when exiting this procedure.
+    end;
+
+    [ErrorBehavior(ErrorBehavior::Collect)]
+    procedure PostWithErrorCollectCustomUI()
+    var
+        errors: Record "Error Message" temporary;
+        error: ErrorInfo;
+        i: Record Integer;
+    begin
+        i.Number := -9;
+        // By using Codeunit.Run, you ensure any changes to the database within
+        // Codeunit::DoPost are rolled back in case of errors.
+        if not Codeunit.Run(Codeunit::DoPost, i) then begin
+            // If Codeunit.Run fails, a non-collectible error was encountered,
+            // add this to the list of errors.
+            errors.ID := errors.ID + 1;
+            errors.Description := GetLastErrorText();
+            errors.Insert();
+        end;
+
+        // If there are collected errors, iterate through each of them and
+        // add them to "Error Message" record.
+        if HasCollectedErrors then
+            foreach error in system.GetCollectedErrors() do begin
+                errors.ID := errors.ID + 1;
+                errors.Description := error.Message;
+                errors.Validate("Record ID", error.RecordId);
+                errors.Insert();
+            end;
+
+        // Clearing the collected errors will ensure the built-in error dialog
+        // will not show, but instead show our own custom "Error Messages" page.
+        ClearCollectedErrors();
+
+        page.RunModal(page::"Error Messages", errors);
+    end;
+}
+
+
+codeunit 50100 DoPost
+{
+    TableNo = Integer;
+
+    trigger OnRun()
+    begin
+        if Number mod 2 <> 0 then
+            Error(ErrorInfo.Create('Number should be equal', true, Rec, Rec.FieldNo(Number)));
+
+        if Number <= 0 then
+            Error(ErrorInfo.Create('Number should be larger than 0', true, Rec, Rec.FieldNo(Number)));
+
+        if Number mod 3 = 0 then
+            Error(ErrorInfo.Create('Number should not be divisible by 10', true, Rec, Rec.FieldNo(Number)));
+
+        // Everything was valid, do the actual posting.
+    end;
+}
+```
+---
+## Background Tasks
+[back to the top](#application-language-cheat-sheet)
+
+In order to improve performance you can have some tasks run in the background asynchronously. When a user opens a page it can be considered as a *parent session*, where the page process everything, unless you are using a background task or a *child session*. This will allow the user to continue working where a they would otherwise have to wait for a process to finish. When a background task finishes the *child session* ends and the *parent session* is notified of the results. Consider the following diagram, which flows from Thread A to Thead B, then to Thread C.
+![session flow](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/media/page-background-task-flow-v4.png)
+
+A background task can only do read-only operations and if the parent session is closed or the record is changed that background task will be cancelled. Background tasks take `dictionary<string, string>` as an argument as well as its return value. Background tasks have the following methods and triggers available to them:
+- **EnqueueBackgroundTask** method - Creates and queues a background task which will run a codeunit that does not have UI.
+- **GetBackgroundParameters** method - This will return the background tasks input paramaters.
+- **SetBAckgroundTaskResult** method - This will create a results dictionary in the background task that is returned in the `OnPageBackgroundTaskCompleted` trigger.
+- **RunPageBackgroundTask** method - This runs the specified background task codeunit in the current session.
+- **CancelBackgroundTask** method - This will attempt to cancel the specified background task.
+- **OnPageBackGroundTaskCompleted** trigger - This trigger is invoked if the background task runs successfully.
+- **OnPageBackgroundTaskError** trigger - This trigger runs if an error is encountered in the background task.
+
+The following image is an example of how the code of a background task executes:
+![background task flow](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/media/page-background-task-code.png)
+
+Because background tasks can only receive and return strings, you have to manually convert them to the desired datatype using `Evaluate` or `Format`. see the [Variable Functions](#variable-functions) section.
+
+The following is an example of a background task used to wait a specified amount of time:
+``` al
+codeunit 50100 PBTWaitCodeunit
+{
+    trigger OnRun()
+    var
+        Result: Dictionary of [Text, Text];
+        StartTime: Time;
+        WaitParam: Text;
+        WaitTime: Integer;
+        EndTime: Time;
+    begin
+        if not Evaluate(WaitTime, Page.GetBackgroundParameters().Get('Wait')) then
+            Error('Could not parse parameter WaitParam');
+
+        StartTime := System.Time();
+        Sleep(WaitTime);
+        EndTime := System.Time();
+
+        Result.Add('started', Format(StartTime));
+        Result.Add('waited', Format(WaitTime));
+        Result.Add('finished', Format(EndTime));
+
+        Page.SetBackgroundTaskResult(Result);
+    end;
+}
+```
+**Calling a Background Task**
+
+To call a background task you use the `EnquireBackgroundTask` method as follows `CurrPage.EnquireBackgroundTask(taskId, codeunitId, parameters, timeout, errorlevel);` It is recommended to call this from a `OnAfterGerCurrRecord` trigger on a page so that the page ID will remane the same. Note that it is *not* recommended to call this from a `OnAfterGetRecord` trigger on a list page as it will cancel the task as soon as a row is retrived.
+
+`taskId` is a global variable that you define, it does not need to have anything assigned to it. 
+
+`codeunitId` is the codeunit that you want to run. 
+
+`parameters` is the `dictionary(text, text)` that you want to pass into it. 
+
+`timeout` is the amount of time in milliseconds before the task is automatically cancelled, with a max time of 10 minutes. And 
+
+`errorlevel` will set the severity for any unhandled errors encountered and can have the following values: 
+
+&ensp;&ensp;&ensp;`PageBackgroundTaskErrorLevel::Ignore` - errors are ignored.
+
+&ensp;&ensp;&ensp;`PageBackgroundTaskErrorLevel::Warning` - errors are displayed as warnings in the client.
+
+&ensp;&ensp;&ensp;`PageBackgroundTaskErrorLevel::Error` - Errors will be shown as a error notification in the client and is the default value.
+
+If you want to repeat a background task to refresh information or because it has timed out (producing the error code `ChildSessionTaskTimeout`) you call the `EnquireBackgroundTask` method again but this time on either the `OnPageBackgroundTaskCompleted` or `OnPageBackgroundTaskError` triggers. It should be noted that you could create an infinite loop if you are not careful. 
+
+**Receiving the Results**
+
+Once the background task has completed successfully it will invoke the `OnPageBackgroundTaskCompleted` trigger along with any results.
+`trigger OnPageBackgroundTaskCompleted(taskId: Integer; results: Dictionary of [Text, Text])`
+
+`taskId` is the ID that has been assigned to the background task.
+
+`results` holds all of the resulting data.
+
+It should be noted that this trigger cant render any UI other then notifications. Additionally the `Update` method does not work in this trigger.
+
+The following is an example of the `OnPageBackgroundTaskCompleted` trigger being used to update with information from the `PBTWaitCodeuni` example above.
+``` al
+trigger OnPageBackgroundTaskCompleted(TaskId: Integer; Results: Dictionary of [Text, Text])
+    var
+        started: Text;
+        waited: Text;
+        finished: Text;
+        PBTNotification: Notification;
+    begin
+        if (TaskId = WaitTaskId) then begin
+            Evaluate(started, Results.Get('started'));
+            Evaluate(waited, Results.Get('waited'));
+            Evaluate(finished, Results.Get('finished'));
+
+            starttime := started;
+            durationtime := waited;
+            endtime := finished;
+            PBTNotification.Message('Start and finish times have been updated.');
+            PBTNotification.Send();
+        end;
+    end;
+```
+**Handling Errors**
+
+When a background task encounters an error it will invoke the `OnPageBackgroundTaskError` trigger and pass it information about the error.
+`trigger OnPageBAckgroundTaskError(taskId: Integer; errorCode: Text; errorText: Text; errorCallStack: Text; var IsHandled: Boolean)`
+
+`taskId` is the ID that was assigned to the background task.
+
+`errorCode` holds the errorcode for the error encountered. This code is defined by the BC server instance.
+
+`errorText` holds the error message.
+
+`errorCallStack` holds the callstack where the error was encountered.
+
+`IsHandled` holds a boolean value specifing wheather or not the error is handled.
+
+You don't have to add any code to this trigger if you just want the errors to be handeled according to their set severity (You don't even need to have this trigger in that case). Assuming that you want to create custom handleing, you can do this by using the `IsHandled` variable. If you set it to `true` then the error will be ignored and handeled by your code. if you set it to `false` it will use the default error handleing.
+
+The following is an example of some custom error handling
+``` al
+trigger OnPageBackgroundTaskError(TaskId: Integer; ErrorCode: Text; ErrorText: Text; ErrorCallStack: Text; var IsHandled: Boolean)
+var
+    PBTErrorNotification: Notification;
+begin
+    if (ErrorCode = 'ChildSessionTaskTimeout') then begin
+        IsHandled := true;
+    PBTErrorNotification.Message('Something went wrong. The start and finish times haven''t been updated.');
+    PBTErrorNotification.Send();
+    end
+    
+    else if (ErrorText = 'Child Session task was terminated because of a timeout.') then begin
+        IsHandled := true;
+        PBTErrorNotification.Message('It took too long to get results. Try again.');
+        PBTErrorNotification.Send();
+    end
+end;
+```
+---
+## Accessing Device Capabilities
+
+**Accessing the camera**
+
+The following is an example of how to access a camera, but not how to save the image
+``` al
+page 50101 "Card with Camera Capability"
+{
+
+    Caption = 'Card Page';
+    PageType = Card;
+    RefreshOnActivate = true;
+    SourceTable = "Test Table";
+
+    layout
+    {
+        area(content)
+        {
+            //...
+        }
+    }
+
+    actions
+    {
+        
+        area(Processing)
+        {
+            action(TakePicture)
+            {
+                Visible = CameraAvailable;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedIsBig = true;
+                Image = Camera;
+
+                trigger OnAction()
+                begin
+                    Camera.RequestPictureAsync();
+                end;
+            }
+
+            action(TakePictureHigh)
+            {
+                Visible = CameraAvailable;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedIsBig = true;
+                Image = Camera;
+
+                trigger OnAction()
+                begin
+                    CameraOptions := CameraOptions.CameraOptions();
+                    CameraOptions.Quality := 100;
+                    Camera.RequestPictureAsync(CameraOptions);
+                end;
+            }
+
+            action(TakePictureLow)
+            {
+                Visible = CameraAvailable;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedIsBig = true;
+                Image = Camera;
+
+                trigger OnAction()
+                begin
+                    CameraOptions := CameraOptions.CameraOptions();
+                    CameraOptions.Quality := 10;
+                    Camera.RequestPictureAsync(CameraOptions);
+                end;
+            }
+        }
+
+    }
+
+    trigger OnOpenPage()
+    begin
+        // The IsAvailable() enables the camera functionality based on its presence.
+        if Camera.IsAvailable() then begin
+            Camera := Camera.Create();
+            CameraAvailable := True;
+        end;
+    end;
+
+    // The PictureName contains the name of the file including its extension on the device. 
+    // The naming scheme depends on the device platform. 
+    // The PictureFilePath contains the path to the picture in a temporary folder on the server for the current user.
+    // The PictureAvailable trigger handles the picture for when the camera has captured it and it has been uploaded.
+    trigger Camera::PictureAvailable(PictureName: Text; PictureFilePath: Text) 
+    begin
+        IncomingFile.Open(PictureFilePath);
+        Message('Picture size: %1', IncomingFile.Len());
+        IncomingFile.Close();
+        // It is important to clean up by using the File.Erase command to avoid accumulating image files.
+        File.Erase(PictureFilePath);
+    end;
+
+    var
+        [RunOnClient]
+        [WithEvents]
+        Camera: DotNet UT_CameraProvider;
+        CameraOptions: DotNet UT_CameraOptions;
+        // Checks whether the current device has a camera.
+        CameraAvailable: Boolean;
+        IncomingFile: File;
+}
+
+dotnet
+{
+    assembly("Microsoft.Dynamics.Nav.ClientExtensions")
+    {
+
+        type("Microsoft.Dynamics.Nav.Client.Capabilities.CameraProvider"; "UT_CameraProvider")
+        {
+
+        }
+
+        type("Microsoft.Dynamics.Nav.Client.Capabilities.CameraOptions"; "UT_CameraOptions")
+        {
+
+        }
+    }
+}
+```
+**Accessing the Device Location**
+
+Before you can access the location of your device while coding you need to add the path of the folder containing the `Microsoft.Dynamics.Nav.ClientExtensions` assembly to the **AL: Assembly Probing Paths** setting on either your user or workspace settings in VSC.
+
+The following is an example for accessing and using a devices location
+``` al
+page 50101 "Card with Location Capability"
+{
+
+    Caption = 'Card Page';
+    PageType = Card;
+    RefreshOnActivate = true;
+    SourceTable = "Test Table";
+
+    layout
+    {
+        area(content)
+        {
+            //...
+        }
+    }
+
+    actions
+    {
+        area(Processing)
+        {
+            action(GetLocation)
+            {
+                Visible = LocationAvailable;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedIsBig = true;
+                Image = Map;
+
+                trigger OnAction()
+                begin
+                    LocationOptions := LocationOptions.LocationOptions;
+                    LocationOptions.EnableHighAccuracy();
+                    Location.RequestLocationAsync();
+                end;
+            }
+        }
+
+    }
+
+    trigger OnOpenPage()
+    begin
+        if Location.IsAvailable() then begin
+            Location := Location.Create();
+            LocationAvailable := true;
+        end;
+    end;
+
+    trigger Location::LocationChanged(Location: DotNet Location)
+    begin
+        // Location.Status can be: 
+        //      0 = Available 
+        //      1 = NoData (no data could be obtained)
+        //      2 = TimedOut (location information not obtained in due time)
+        //      3 = NotAvailable (for example user denied app access to location)
+        if Location.Status = 0 then
+            Message('Your position: %1 %2', Location.Coordinate.Latitude, Location.Coordinate.Longitude)
+        else
+            Message('Position not available');
+    end;
+
+    var
+        [RunOnClient]
+        [WithEvents]
+        Location: DotNet LocationProvider;
+        LocationAvailable: Boolean;
+        LocationOptions: DotNet UT_LocationOptions;
+}
+
+dotnet
+{
+    assembly("Microsoft.Dynamics.Nav.ClientExtensions")
+    {
+
+        type("Microsoft.Dynamics.Nav.Client.Capabilities.LocationProvider"; LocationProvider)
+        {
+
+        }
+
+        type("Microsoft.Dynamics.Nav.Client.Capabilities.Location"; Location)
+        {
+
+        }
+
+        type("Microsoft.Dynamics.Nav.Client.Capabilities.LocationOptions"; UT_LocationOptions)
+        {
+
+        }
+    }
+}
+```
+---
 ## Testing
 [back to the top](#application-language-cheat-sheet)
 
@@ -1935,6 +2499,33 @@ To test your code you can make test codeunits and test methods. Test codeunits h
 - **`test`** - This method type is used to test the business logic in the extension. To make a test method declare the `[Test]` attribute on a procedure.
 - **`handler`** - The handler method is used to handle any instances where user interation is required. There are various types of handler methods that can be found [here](https://docs.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-creating-handler-methods) or go to the [UI handler](#ui-handler) section for more information.
 - **`normal`** - A normal method is used to structure the test code. To make a normal method you declare the `[Normal]` attribute.
+
+The following is an example of testing a background task codeunit.
+``` al 
+codeunit 50122 MyPBTCodeunit
+{
+    Subtype = Test;
+    trigger OnRun()
+    begin
+        CustomerCard.OpenEdit();
+
+        // Adds the parameters to be used as input to the background task
+        TaskParameters.Add('Wait', '1000');
+
+        // Runs the background task codeunit
+        Results := CustomerCard.RunPageBackgroundTask(50100, TaskParameters);
+        
+        // Returns the results in the client
+        Message('Start time: ' + '%1' + ', Duration :' + '%2' + ', Finished time: ' + '%3', Results.Get('started'), Results.Get('waited'), Results.Get('finished'));
+    end;
+
+    var
+        CustomerCard: TestPage "Customer Card";
+
+        Results: Dictionary of [Text, Text];
+        TaskParameters: Dictionary of [Text, Text];
+}
+```
 
 ---
 ### Test Runner codeunit
